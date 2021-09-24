@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import string
@@ -79,7 +79,7 @@ class R:
         self.text = " ".join(" ".join(r.split()).split(" "))
 
         if "@" in r:
-            [rct, rts] = map(string.strip, r.split("@"))
+            [rct, rts] = map(str.strip, r.split("@"))
             if 1 == len(rts.split()) and " ==> " == cs:
                 self.frate = rts.split()[0]
             elif 2 == len(rts.split()) and " <==> " == cs:
@@ -87,7 +87,7 @@ class R:
             else:
                 raise Exception("Malformed rate input: \"%s\" (%d)" % (r, n))
         elif "|" in r:
-            [rct, rts] = map(string.strip, r.split("|"))
+            [rct, rts] = map(str.strip, r.split("|"))
             if 1 == len(rts.split()) and " ==> " == cs:
                 self.kf = rts.split()[0]
             elif 2 == len(rts.split()) and " <==> " == cs:
@@ -137,7 +137,7 @@ class R:
         else:
             r = self.products
         
-        for i in map(string.strip, r.split("+")):
+        for i in map(str.strip, r.split("+")):
             if y == i:
                 c += 1
                 
@@ -146,7 +146,7 @@ class R:
     
 def xsmc(r, x):
     c = 0
-    for i in map(string.strip, r.split("+")):
+    for i in map(str.strip, r.split("+")):
         if x == i:
             c += 1
     return c
@@ -341,7 +341,7 @@ def proc_r():
 
 
 def subst_x(e):
-    c = constant.keys()
+    c = list(constant.keys())
     
     for s in rspcs + c:
         s1 = "__%s__" % s
@@ -401,7 +401,7 @@ def latex_reaction_fmt(s):
     for i in s.split():
         x = i
 
-        if seen.has_key(x):
+        if seen.get(x):
             continue
 
         if "+" == x:
@@ -567,7 +567,6 @@ def latex_output(fbase, src):
         raise
 
     fp.write("%%%% START SRC %s\n" % os.path.basename(src))
-    dbg("LaTeX FILE %s" % fname)
 
     with open(src) as f:
         for l in f:
@@ -709,7 +708,7 @@ def latex_output(fbase, src):
     fp.write("\\section{Keywords}\n\n")
     if len(config["keywords"]):
         fp.write(", ".join(config["keywords"]))
-    fp.write("\n\n")
+    fp.write("\\n\\n")
 
     fp.write("\\begin{thebibliography}{99}\n"
              "\\bibitem{lsoda} A.C. Hindmarsh, {\\em ODEPACK, A Systematized Collection of ODE Solvers}, in {\\em Scientific Computing}, R.S. Stepleman et al. (Eds.), North--Holland, Amsterdam, {\\bf 1983}, pp. 55-64.\n")
@@ -732,7 +731,7 @@ def latex_output(fbase, src):
     if len(excess):
         fp.write("%%%% Species in excess: %s\n" % " ".join(excess))
         for a in excess:
-            if initial.has_key(a):
+            if initial.get(a):
                 fp.write("%%%% #define %s (%s)\n" % (a, initial[a]))
         fp.write("\n")
 
@@ -789,7 +788,7 @@ def latex_output(fbase, src):
     fp.close()
 
     try:
-        os.chmod(fname, 0644)
+        os.chmod(fname, 0o644)
     except:
         pass
 
@@ -837,7 +836,7 @@ def lsoda_c_output(fbase):
         if len(excess):
             fp.write("\n/* Species in excess %s */\n" % " ".join(excess))
             for a in excess:
-                if initial.has_key(a):
+                if initial.get(a):
                     fp.write("#define %s (%s)\n" % (a, initial[a]))
 
         if len(constant):
@@ -909,7 +908,7 @@ def lsoda_c_output(fbase):
         fp.close()
 
     try:
-        os.chmod(fname, 0644)
+        os.chmod(fname, 0o644)
     except:
         pass
 
@@ -941,7 +940,7 @@ def octave_output(fbase):
         if len(excess):
             fp.write("\n# Species in excess\nglobal %s ;\n" % " ".join(excess))
             for a in excess:
-                if initial.has_key(a):
+                if initial.get(a):
                     fp.write("%s = %s ;\n" % (a, initial[a]))
 
         if len(constant):
@@ -1007,7 +1006,7 @@ def octave_output(fbase):
         fp.close()
 
     try:
-        os.chmod(fname, 0755)
+        os.chmod(fname, 0o755)
     except:
         pass
 
