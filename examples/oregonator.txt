@@ -1,0 +1,18 @@
+CONSTANT H 0.36
+EXCESS P
+
+A + W ==> U + P              | 2.0*H*H
+U + W ==> P + P              | 1000000*H
+A + U ==> U + U + V + V      | 40*H
+U + U ==> A + P              | 2000
+B + V ==> W                  | 0.4
+
+INITIAL P 1
+INITIAL A 0.33
+INITIAL B 0.32
+INITIAL U 0.0000005
+INITIAL V 0.0001
+INITIAL W 0.00003
+
+SIMULATION T_END 500
+SIMULATION T_POINTS 10

@@ -1,0 +1,56 @@
+# Szalai and Koros, J. Phys. Chem. A 1998, 102, 6892-6897
+# SK model doi:10.1021/jp9832721
+#
+# Similar simulation as in Figure 9 in the above publication
+
+EXCESS H H2O
+INITIAL H 1.29
+INITIAL H2O 1
+
+# R1
+Br + HOBr + H <==> Br2 + H2O            | 8E9         80
+# R2
+Br + HBrO2 + H <==> HOBr + HOBr         | 2.5E6       2E-5
+# R3
+Br + BrO3 + H + H <==> HOBr + HBrO2     | 1.2         3.2
+# R4
+HBrO2 + H  <==> H2BrO2                  | 2E6         1E8
+# R5
+HBrO2 + H2BrO2 ==> HOBr + BrO3 + H + H  | 1.7E5
+# R6
+HBrO2 + BrO3 + H <==> Br2O4 + H2O       | 48          3.2E3
+# R7
+Br2O4 <==> BrO2 + BrO2                  | 7.5E4       1.4E9
+# R8
+H2Q + BrO2 ==> HQ + HBrO2               | 8E5
+# R9
+HQ + BrO2 ==> Q + HBrO2                 | 8E9
+# R10
+HQ + HQ <==> H2Q + Q                    | 8.8E8       7.7E-4
+# R11
+CHD + H  <==> CHDE + H                  | 2.13E-4     5.2E2
+# R12
+CHDE + Br2 ==> BrCHD + H + Br           | 2.8E9
+# R13
+CHDE + HOBr ==> BrCHD + H2O             | 2.8E9
+# R14
+BrCHD + H  ==>  CHED + Br + H           | 5E-5
+# R15
+CHED + H ==> H2Q + H                    | 1.94E-4
+# R16
+H2Q + Br2 ==> Q + Br + Br + H + H       | 3E4
+# R17
+H2Q + BrO3 + H ==> Q + HBrO2 + H2O      | 2E-2
+# R18
+H2Q + HOBr ==> Q + Br + H + H2O         | 6E5
+# R19
+CHD + BrO3 + H ==> H2Q + HBrO2 + H2O    | 1E-5
+
+INITIAL Br 1E-5
+INITIAL BrO3 0.1
+INITIAL CHD 0.1
+
+SIMULATION T_END 55000
+SIMULATION T_POINTS 33
+SIMULATION MAXIMUM_STEP_SIZE 0.001
+
