@@ -331,7 +331,9 @@ def proc_r():
         xdot_raw.append(" ".join(b))
 
         if config["has_sympy"]:
-            exec("df = %s" % symbols(" ".join(a)))
+            global df
+            cmd = "df = %s" % symbols(" ".join(a))
+            exec(cmd, globals())
             dbg(df)
             if config["opt_octave"]:
                 xdot.append(subst_x(str(df)))
@@ -1024,7 +1026,7 @@ def usage():
     if len(sys.argv) > 0:
         me = sys.argv[0]
     else:
-        me = "erhelper.py"
+        me = "ersimu.py"
 
     print("Usage: %s [OPTIONS] FILE" % me)
 
@@ -1093,13 +1095,13 @@ def main(argv):
         dbg("xdot_raw(%d) = %s ; " % (i + 1, xdot_raw[i]))
         i += 1
 
-    lsoda_c_output("erhelper")
+    lsoda_c_output("ersimu")
 
     if config["opt_octave"]:
-        octave_output("erhelper")
+        octave_output("ersimu")
 
     if config["opt_latex"]:
-        latex_output("erhelper", fname)
+        latex_output("ersimu", fname)
 
     dbg("X %s" % x)
     dbg("EXCESS %s" % excess)
