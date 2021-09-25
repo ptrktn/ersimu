@@ -12,10 +12,12 @@ test: test-lv
 
 .PHONY: test-lv
 test-lv:
-	rm -f ersimu.mat ersimu.m
-	./ersimu.py -v --octave examples/lotka-volterra.txt
-	$(OCTAVE) ersimu.m
-	./xplot.sh -N test-lv ersimu.mat
+	rm -f ersimu.mat ersimu.m ersimu_scipy.py ersimu.pdf
+	./ersimu.py -v examples/lotka-volterra.txt
+	#	$(OCTAVE) ersimu.m
+	#	./xplot.sh -N test-lv ersimu.mat
+	./ersimu_scipy.py
+	test -f ersimu.pdf
 
 .PHONY: test-o
 test-o:
@@ -54,3 +56,7 @@ test-parser:
          echo "Input file: $$i" ; \
          ./ersimu.py $$i || exit 1 ; \
     done
+
+.PHONY: dep
+dep:
+	pip3 install -r requirements.txt --user

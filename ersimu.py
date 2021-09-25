@@ -949,7 +949,7 @@ def octave_output(fbase):
             fp.write("\n# Constants\nglobal %s ;\n" % " ".join(constant))
             for a in constant:
                 fp.write("%s = %s ;\n" % (a, constant[a]))
-            
+
         fp.write("\n# forward reaction rates\nkf = zeros(%d, 1) ;\n" % n)
         for r in rctns:
             if r.rates[0]:
@@ -1011,6 +1011,105 @@ def octave_output(fbase):
         os.chmod(fname, 0o755)
     except:
         pass
+
+def scipy_output(fbase):
+    fname = "%s_scipy.py" % fbase
+    mname = "%s.mat" % fbase
+    n = len(rctns)
+
+    try:
+        fp = open(fname, "w")
+
+        fp.write("#!/usr/bin/env python3\n")
+        fp.write("# -*-python-*-\n")
+        fp.write("""
+from scipy.integrate import solve_ivp
+import matplotlib.pyplot as plt
+import numpy as np
+import math
+\n""")
+
+        sx = 0
+        for r in rctns:
+            if len(r.text) > sx:
+                sx = len(r.text)
+
+        sx += 3
+        fmt = "# %%-%ds (R%%d)\n" % sx
+        for r in rctns:
+            fp.write(fmt % (r.text, r.i))
+
+        if len(excess):
+            fp.write("\n# Species in excess\n#global %s ;\n" % " ".join(excess))
+            for a in excess:
+                if initial.get(a):
+                    fp.write("%s = %s ;\n" % (a, initial[a]))
+
+        if len(constant):
+            fp.write("\n# Constants\n#global %s ;\n" % " ".join(constant))
+            for a in constant:
+                fp.write("%s = %s ;\n" % (a, constant[a]))
+
+        fp.write("\n# forward reaction rates\nkf = np.zeros(%d) ;\n" % n)
+        for r in rctns:
+            if r.rates[0]:
+                fp.write("kf[%d] = %s ;\n" % (r.i - 1, r.kf))
+
+        fp.write("\n# reverse reaction rates\nkr = np.zeros(%d) ;\n" % n)
+        for r in rctns:
+            if r.rates[1]:
+                fp.write("kr[%d] = %s ;\n" % (r.i - 1, r.kr))
+
+        fp.write("\n# initial conditions\nx0 = np.zeros(%d) ;\n" % len(xdot_raw))
+        for a in x:
+            if a in initial:
+                i = x.index(a)
+                fp.write("# %s\nx0[%d] = %s ;\n" % (a, i, initial[a]))
+
+        fp.write("\ndef f(t, x):\n")
+        fp.write("    xdot = np.zeros((%d, 1))\n" % len(xdot_raw))
+
+        for i in kinet_keys:
+            e = re.sub(r'([x,kf,kr])\((\d+)\)', lambda x: x.groups()[0] + "[" + str(int(x.groups()[1]) - 1) + "]", kinet[i])
+            fp.write("    %s = %s\n" % (i, e))
+        fp.write("\n")
+
+        i = 0
+        for dx in xdot_raw:
+            # e = re.sub(r'([x,kf,kr])\((\d+)\)', lambda x: x.groups()[0] + "[" + str(int(x.groups()[1]) - 1) + "]", xdot_raw[i])
+            e = xdot_raw[i]
+            fp.write("    xdot[%d] = %s\n" % (i, e))
+            i += 1
+
+        fp.write("\n    return xdot\n\n\n")
+
+        fp.write("max_step_ =  %s\n" % simulation.get("MAXIMUM_STEP_SIZE", "np.inf"))
+        fp.write("atol_ = %s\n" % lsode_atol)
+        fp.write("rtol_ = %s\n" % lsode_rtol)
+        fp.write("t_end = %s\n" % simulation["T_END"])
+        fp.write("t_points = %s\n" % simulation["T_POINTS"])
+        fp.write("t = np.linspace(0, t_end, t_end * t_points)\n")
+        fp.write("sol = solve_ivp(f, (0, t_end), x0, t_eval=t, "
+                 "method='LSODA', dense_output=True, vectorized=True, "
+                 "max_step=max_step_, atol=atol_, rtol=rtol_)\n")
+        #print(z.status, z.nfev)
+        n = len(x)
+        fp.write("fig, ax = plt.subplots(%d)\n" % n)
+        for i in range(n):
+            fp.write(f"ax[{i}].plot(sol.t.T, sol.y[{i}].T)\n"
+                     f"ax[{i}].set_ylabel('{x[i]}')\n")
+        fp.write(f"plt.show()\nplt.savefig('{fbase}.pdf')\n")
+
+    except:
+        raise
+    finally:
+        fp.close()
+
+    try:
+        os.chmod(fname, 0o755)
+    except:
+        pass
+
 
 def validate_input():
     for a in excess:
@@ -1096,6 +1195,7 @@ def main(argv):
         i += 1
 
     lsoda_c_output("ersimu")
+    scipy_output("ersimu")
 
     if config["opt_octave"]:
         octave_output("ersimu")
