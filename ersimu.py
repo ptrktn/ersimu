@@ -1076,9 +1076,7 @@ import math
 
         i = 0
         for dx in xdot_raw:
-            # e = re.sub(r'([x,kf,kr])\((\d+)\)', lambda x: x.groups()[0] + "[" + str(int(x.groups()[1]) - 1) + "]", xdot_raw[i])
-            e = xdot_raw[i]
-            fp.write("    xdot[%d] = %s\n" % (i, e))
+            fp.write("    xdot[%d] = %s\n" % (i, xdot_raw[i]))
             i += 1
 
         fp.write("\n    return xdot\n\n\n")
@@ -1094,7 +1092,7 @@ import math
                  "max_step=max_step_, atol=atol_, rtol=rtol_)\n")
         #print(z.status, z.nfev)
         n = len(x)
-        fp.write("fig, ax = plt.subplots(%d)\n" % n)
+        fp.write(f"fig, ax = plt.subplots({n}, figsize=(15, 8))\n")
         for i in range(n):
             fp.write(f"ax[{i}].plot(sol.t.T, sol.y[{i}].T)\n"
                      f"ax[{i}].set_ylabel('{x[i]}')\n")
