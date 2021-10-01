@@ -2874,34 +2874,43 @@ int main(void)
 #include ERHELPER_CUSTOM_INCLUDE
 #endif
 
-static void t_print(double t, double *x, int n)
+static void t_print(FILE *fp, double t, double *x, int n)
 {
 	int i;
 	
-	printf("%e", t);
+	fprintf(fp, "%e", t);
 
 	for (i = 1; i <= n; i++) {
-		printf(" %e", x[i]);
+		fprintf(fp, " %e", x[i]);
 	}
 
-	printf("\n");
+	fprintf(fp, "\n");
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
 	double          rwork1, rwork5, rwork6, rwork7;
 	double          atol[NEQ+1], rtol[NEQ+1], t, tout, y[NEQ+1], dt;
 	int             iwork1, iwork2, iwork5, iwork6, iwork7, iwork8, iwork9;
 	int             neq = NEQ;
 	int             itol, itask, istate, iopt, jt, iout;
+	FILE            *fp;
+	char            *fname = NULL;
+
+	if (2 == argc) {
+		fname = argv[1];
+		if (!(fp = fopen(fname, "wb"))) {
+			fprintf(stderr, "ERROR: Opening file %s for writing failed\n", fname);
+			exit(1);
+		}
+	} else {
+		fp = stdout;
+	}
 
 	erhelper_init(y, atol, rtol);
 	
 	iwork1 = iwork2 = iwork5 = iwork6 = iwork7 = iwork8 = iwork9 = 0;
 	rwork1 = rwork5 = rwork6 = rwork7 = 0.0;
-	/*y[1] = 1;
-	y[2] = 1;
-	y[3] = 0.0E0;*/
 	t = 0.0E0;
 	dt = T_DELTA;
 	tout = dt;
@@ -2911,12 +2920,6 @@ int main(void)
 	/* Set MAX steps argument */
 	iopt = 1;
 	iwork6 = 100000;
-	/*
-	rtol[1] = rtol[3] = 1.0E-4;
-	rtol[2] = 1.0E-8;
-	atol[1] = 1.0E-6;
-	atol[2] = 1.0E-10;
-	atol[3] = 1.0E-6;*/
 	itask = 1;
 	istate = 1;
 	/* iopt = 0; */
@@ -2942,11 +2945,10 @@ int main(void)
 		lsoda(fex, neq, y, &t, tout, itol, rtol, atol, itask, &istate, iopt, jt,
 		      iwork1, iwork2, iwork5, iwork6, iwork7, iwork8, iwork9,
 		      rwork1, rwork5, rwork6, rwork7, 0);
-		/* printf(" at t= %12.4e y= %14.6e %14.6e %14.6e\n", t, y[1], y[2], y[3]); */
-		t_print(t, y, NEQ);
+		t_print(fp, t, y, NEQ);
 		if (istate <= 0) {
-			printf("error istate = %d\n", istate);
-			exit(0);
+		  fprintf(stderr, "error istate = %d\n", istate);
+		  exit(2);
 		}
 
 		tout += dt;
@@ -2955,6 +2957,9 @@ int main(void)
 			break;
 	}
 	n_lsoda_terminate();
+
+	if (fname)
+		fclose(fp);
 	
 	return (2 == istate ? 0 : 1);
 }
