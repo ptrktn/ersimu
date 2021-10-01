@@ -8,14 +8,26 @@ LSODACFLAGS=-Wno-maybe-uninitialized -Wno-unused-but-set-variable \
 	-Wno-unused-variable
 
 .PHONY: test
-test: test-lv
+test:
+	$(MAKE) PYTHONDONTWRITEBYTECODE=1 test-all
 
-.PHONY: test-lv
-test-lv:
-	rm -f lotkavolterra.pdf
-	./ersimu.py --verbose --scipy --name lotkavolterra --run examples/lotka-volterra.txt
-	test -f lotkavolterra.pdf
+.PHONY: test-all
+test-all: test-parse test-lsoda test-scipy test-octave
 
+.PHOHY: test-parse
+test-parse:
+	for i in `find examples -type f | sort` ; do \
+      for opt in --lsodac --octave --scipy --latex ; do \
+          echo Parse $$i option $$opt ; \
+          ./ersimu.py $$opt $$i || exit 1 ; \
+      done ; \
+    done
+
+.PHONY: test-scipy
+test-scipy:
+	rm -f test.pdf
+	./ersimu.py --verbose --scipy --name test --run examples/lotka-volterra.txt
+	test -f test.pdf
 
 .PHONY: test-2
 test-2:
@@ -24,16 +36,13 @@ test-2:
 	./ersimu_scipy.py
 	test -f ersimu.pdf
 
-.PHONY: test-o
-test-o:
-	rm -f ersimu.mat ersimu.m ersimu.h
-	./ersimu.py examples/oregonator.txt
-	$(OCTAVE) ersimu.m
-	./xplot.sh -N test-o ersimu.mat
-	rm -f ersimu.mat
-	$(MAKE) lsoda
-	./lsoda > ersimu.mat
-	./xplot.sh ersimu.mat
+.PHONY: test-octave
+test-octave:
+	rm -f simulation.dat simulation.m
+	./ersimu.py --octave examples/oregonator.txt
+	test -f simulation.m
+	$(OCTAVE) simulation.m
+	./xplot.sh -N test simulation.dat
 
 lsoda: lsoda.c ersimu.h
 	$(CC) $(CFLAGS) $(LSODACFLAGS) -o lsoda lsoda.c -lm
@@ -43,24 +52,12 @@ test-lsoda:
 	rm -f ersimu.h ersimu.mat
 	./ersimu.py examples/brusselator.txt
 	$(MAKE) lsoda
-	./lsoda > ersimu.mat
-	./xplot.sh -N test-lsoda ersimu.mat
-
-.PHONY: lsoda-sim
-lsoda-sim: lsoda
-	rm -f ersimu.mat
-	./lsoda > ersimu.mat
+	./lsoda test.dat
+	./xplot.sh -N test test.dat
 
 .PHONY: clean
 clean:
-	rm -f core *~ *.BAK octave-workspace *.jpg *.mat *.m *.h lsoda
-
-.PHONY: test-parser
-test-parser:
-	@for i in $(shell find examples -type f -name '*.txt' | sort) ; do \
-         echo "Input file: $$i" ; \
-         ./ersimu.py $$i || exit 1 ; \
-    done
+	rm -f core *~ *.BAK octave-workspace *.jpg *.mat *.m *.h *.pdf lsoda
 
 .PHONY: dep
 dep:

@@ -68,6 +68,7 @@ def get_arg_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument("--latex", action="store_true", dest="latex", default=False, help="Generate LaTeX output")
+    parser.add_argument("--lsodac", action="store_true", dest="lsodac", default=True, help="Generate LSODA C output (default)")
     parser.add_argument("--name", type=str, dest="name", default="simulation", help="Output name")
     parser.add_argument("--octave", action="store_true", dest="octave", default=False, help="Generate GNU Octave output")
     parser.add_argument("--run", action="store_true", dest="run", default=False, help="Run the simulation")
@@ -945,7 +946,7 @@ def lsoda_c_output(fbase):
 
 def octave_output(fbase):
     fname = "%s.m" % fbase
-    mname = "%s.mat" % fbase
+    mname = "%s.dat" % fbase
     n = len(rctns)
 
     try:
@@ -1168,6 +1169,8 @@ def main(argv):
         err("name can not contain dashes")
 
     config["verbose"] = opts.verbose
+    config["octave"] = opts.octave
+    config["latex"] = opts.latex
     fname = opts.inputfile
 
     read_r(fname)
@@ -1205,9 +1208,10 @@ def main(argv):
     elif opts.octave:
         octave_output(opts.name)
     elif opts.latex:
-        latex_output(opts.name, fname)
+        print("FIXME: --latex has issues with Python3")
+        # FIXME latex_output(opts.name, fname)
     else:
-        lsoda_c_output("ersimu", opts.name)
+        lsoda_c_output("ersimu")
 
     dbg("X %s" % x)
     dbg("EXCESS %s" % excess)
