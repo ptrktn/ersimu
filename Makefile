@@ -12,10 +12,15 @@ test: test-lv
 
 .PHONY: test-lv
 test-lv:
+	rm -f lotkavolterra.pdf
+	./ersimu.py --verbose --scipy --name lotkavolterra --run examples/lotka-volterra.txt
+	test -f lotkavolterra.pdf
+
+
+.PHONY: test-2
+test-2:
 	rm -f ersimu.mat ersimu.m ersimu_scipy.py ersimu.pdf
-	./ersimu.py -v examples/lotka-volterra.txt
-	#	$(OCTAVE) ersimu.m
-	#	./xplot.sh -N test-lv ersimu.mat
+	./ersimu.py -v examples/szalai-koros-chd.txt
 	./ersimu_scipy.py
 	test -f ersimu.pdf
 

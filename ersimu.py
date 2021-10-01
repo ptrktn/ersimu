@@ -2,6 +2,11 @@
 
 import sys
 import string
+import argparse
+
+"""
+FIXME
+"""
 
 # FIXME SymPy will be needed for deriving Jacobian (implementation pending)
 # LaTeX output requires sympy
@@ -19,9 +24,12 @@ import re
 import os
 import getopt
 
-config["verbose"] = 0
-config["opt_octave"] = False
-config["opt_latex"] = False
+config["verbose"] = False
+config["octave"] = False
+config["latex"] = False
+config["scipy"] = False
+config["run"] = False
+config["name"] = "simulation"
 config["title"] = None
 config["author"] = None
 config["bibitem"] = []
@@ -45,8 +53,29 @@ lsode_atol = "1E-6"
 lsode_rtol = "1E-6"
 
 def dbg(msg):
-    if config["verbose"] > 0:
-        print("DEBUG: %s" % str(msg))
+    if config["verbose"]:
+        sys.stderr.write(f"DEBUG: {msg}\n")
+
+
+def err(msg, estatus=1):
+    sys.stderr.write(f"ERROR: {msg}\n")
+    sys.exit(estatus)
+
+
+def get_arg_parser():
+    parser = argparse.ArgumentParser(
+        prog=os.path.basename(__file__), description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    parser.add_argument("--latex", action="store_true", dest="latex", default=False, help="Generate LaTeX output")
+    parser.add_argument("--name", type=str, dest="name", default="simulation", help="Output name")
+    parser.add_argument("--octave", action="store_true", dest="octave", default=False, help="Generate GNU Octave output")
+    parser.add_argument("--run", action="store_true", dest="run", default=False, help="Run the simulation")
+    parser.add_argument("--scipy", action="store_true", dest="scipy", default=False, help="Generate SciPy output")
+    parser.add_argument("--verbose", action="store_true", dest="verbose", default=False, help="Be verbose")
+    parser.add_argument("inputfile", metavar="FILE", type=str, help="Input file name")
+
+    return parser
 
 
 class R:
@@ -335,9 +364,9 @@ def proc_r():
             cmd = "df = %s" % symbols(" ".join(a))
             exec(cmd, globals())
             dbg(df)
-            if config["opt_octave"]:
+            if config["octave"]:
                 xdot.append(subst_x(str(df)))
-            if config["opt_latex"]:
+            if config["latex"]:
                 xdot.append(str(df))
 
 
@@ -797,7 +826,6 @@ def latex_output(fbase, src):
 
 def lsoda_c_output(fbase):
     fname = "%s.h" % fbase
-    mname = "%s.mat" % fbase
     n = len(rctns)
     neq = len(xdot_raw)
     
@@ -1013,8 +1041,7 @@ def octave_output(fbase):
         pass
 
 def scipy_output(fbase):
-    fname = "%s_scipy.py" % fbase
-    mname = "%s.mat" % fbase
+    fname = f"{fbase}.py"
     n = len(rctns)
 
     try:
@@ -1096,7 +1123,7 @@ import math
         for i in range(n):
             fp.write(f"ax[{i}].plot(sol.t.T, sol.y[{i}].T)\n"
                      f"ax[{i}].set_ylabel('{x[i]}')\n")
-        fp.write(f"plt.show()\nplt.savefig('{fbase}.pdf')\n")
+        fp.write(f"plt.show()\nplt.savefig('{fbase}.pdf', bbox_inches='tight')\n")
 
     except:
         raise
@@ -1129,46 +1156,25 @@ def usage():
 
 
 def main(argv):
+    opts = get_arg_parser().parse_args()
 
-    try:
-        opts, args = getopt.getopt(argv, "hvl",
-                                   ["help", "verbose", "latex", "octave"])
-    except getopt.GetoptError as err:
-        usage()
-        sys.exit(2)
+    if opts.latex or opts.octave:
+        if not(config["has_sympy"]):
+            err("sympy is not available")
 
-    for o, a in opts:
-        if o in ("-h", "--help"):
-            usage()
-            sys.exit(0)
-        elif o in ("-v", "--verbose"):
-            config["verbose"] += 1
-        elif o in ("-l", "--latex"):
-            if config["has_sympy"]:
-                config["opt_latex"] = True
-            else:
-                print("ERROR: sympy is not available")
-                sys.exit(1)
-        elif o in ("--octave"):
-            if config["has_sympy"]:
-                config["opt_octave"] = True
-            else:
-                print("ERROR: sympy is not available")
-                sys.exit(1)
-        else:
-            raise("Unhandled option")
+    if "ersimu" == opts.name:
+        err("bad name")
+    elif "-" in opts.name:
+        err("name can not contain dashes")
 
-    if len(args) > 0:
-        fname = args[0]
-    else:
-        usage()
-        sys.exit(1)
-        
+    config["verbose"] = opts.verbose
+    fname = opts.inputfile
+
     read_r(fname)
 
     validate_input()
 
-    if config["verbose"] > 1:
+    if config["verbose"]:
         for r in rctns:
             print(r.i)
             print(r.reactants)
@@ -1187,19 +1193,21 @@ def main(argv):
 
     i = 0
     for dx in xdot_raw:
-        if config["opt_latex"] or config["opt_octave"]:
+        if config["latex"] or config["octave"]:
             dbg("xdot(%d) = %s ; " % (i + 1, xdot[i]))
         dbg("xdot_raw(%d) = %s ; " % (i + 1, xdot_raw[i]))
         i += 1
 
-    lsoda_c_output("ersimu")
-    scipy_output("ersimu")
-
-    if config["opt_octave"]:
-        octave_output("ersimu")
-
-    if config["opt_latex"]:
-        latex_output("ersimu", fname)
+    if opts.scipy:
+        scipy_output(opts.name)
+        if opts.run:
+            exec(f"import {opts.name}")
+    elif opts.octave:
+        octave_output(opts.name)
+    elif opts.latex:
+        latex_output(opts.name, fname)
+    else:
+        lsoda_c_output("ersimu", opts.name)
 
     dbg("X %s" % x)
     dbg("EXCESS %s" % excess)
