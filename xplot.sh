@@ -3,6 +3,8 @@
 GNUPLOTBIN=${GNUPLOT-gnuplot}
 HAVE_GS=0
 HAVE_IM=0
+HAVE_PDF_TERM=0
+HAVE_EPS_TERM=0
 HAVE_JPEG_TERM=0
 sopt=0
 NAME=""
@@ -19,6 +21,16 @@ preflight() {
 	echo "set term" | $GNUPLOTBIN 2>&1 | grep -wq jpeg
 	if [ 0 -eq $? ] ; then
 		HAVE_JPEG_TERM=1
+	fi
+
+	echo "set term" | $GNUPLOTBIN 2>&1 | grep -wq pdfcairo
+	if [ 0 -eq $? ] ; then
+		HAVE_PDF_TERM=1
+	fi
+
+	echo "set term" | $GNUPLOTBIN 2>&1 | grep -wq epscairo
+	if [ 0 -eq $? ] ; then
+		HAVE_EPS_TERM=1
 	fi
 
 	test -x "$(command -v gs)"
@@ -98,12 +110,15 @@ xplot() {
 	local col=$2
 	local title=$3
 	local j=$(( $col - 1 ))
-	local f=${ID}_x$(printf "%02d" $j).jpg
+	local f=${ID}_x$(printf "%02d" $j).pdf
 	local ptitle=$(echo $ID | sed 's:_: :g')
 
 	[ -z "$TITLE" ] || ptitle="$TITLE"
 
-	if [ $HAVE_JPEG_TERM -ne 0 ] ; then
+	if [ $HAVE_PDF_TERM -ne 0 ] ; then
+		echo "set term pdfcairo ; set output '$f' ; set title '$ptitle' ; plot '$fname' u 1:$col w l ls 1 title 'x(${j}) $title'" | $GNUPLOTBIN > /dev/null 2>&1 || exit 1
+	elif [ $HAVE_JPEG_TERM -ne 0 ] ; then
+		f=${ID}_x$(printf "%02d" $j).jpg
 		echo "set term jpeg size 1280,960 ; set output '$f' ; set title '$ptitle' ; plot '$fname' u 1:$col w l ls 1 title 'x(${j}) $title'" | $GNUPLOTBIN > /dev/null 2>&1 || exit 1
 	else
 		local tmp=$(mktemp --tmpdir=/tmp tmp.XXXXX.ps)
