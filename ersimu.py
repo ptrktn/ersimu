@@ -30,7 +30,7 @@ config["latex"] = False
 config["scipy"] = False
 config["run"] = False
 config["name"] = "simulation"
-config["title"] = None
+config["title"] = "Simulation"
 config["author"] = None
 config["bibitem"] = []
 config["keywords"] = []
@@ -498,21 +498,21 @@ def eqnarray_rhs(s, label):
 # Reaction rate coefficient formatter
 def latex_rc(s, a):
     notcounted = ["H2O"]
-    # FIXME add contants to notcounted
+    # FIXME add constants to notcounted
     n = 0
 
     for i in a.split():
         if "+" != i and i not in notcounted:
             n += 1
-    
-    x = re.sub(r'E([\+\-.]*\d{1,})', r' $\\times 10^{\1}$ ', s)
+
+    x = re.sub(r'E([\+\-.]*\d{1,})', r' $\\times 10^{\1}$ ', str(s))
 
     if 0 == n:
         # FIXME Better croak here?
         print("WARNING: Suspicious values latex_rc(%s, %s)" % (s, a))
         return x
     elif 1 == n:
-        return "%s $s^{-1}$" % x
+        return "%s s$^{-1}$" % x
     
     return "%s mol$^{-%d}$dm$^{%d}$s$^{-1}$" % (x, (n - 1), (3 * (n - 1)))
 
@@ -556,7 +556,7 @@ def cmp_dx(a, b):
 
 def rate_sorted(v):
     r = v.split("*")
-    r.sort(cmp_rate)
+    r.sort()
     return "*".join(r)
 
 
@@ -574,16 +574,17 @@ def dx_sorted(v):
             # Hack to preserve '**2'
             i = i.replace("**2", "^2")
             t = i.split("*")
-            t.sort(cmp_dx)
+            t.sort()
             r.append("*".join(t).replace("^2", "**2"))
 
     return " ".join(r)
 
 
 def latex_vrate(v):
-    exec("r = str(%s)" % symbols(" * ".join(v.split("*"))))
-    dbg("VRATE = %s" % r)
-    r = rate_sorted(r)
+    global tmp_vrate
+    exec("tmp_vrate = str(%s)" % symbols(" * ".join(v.split("*"))), globals())
+    dbg(f"VRATE = {tmp_vrate}")
+    r = rate_sorted(tmp_vrate)
     r = latex_sub2(r)
     return r
 
@@ -607,7 +608,7 @@ def latex_output(fbase, src):
     fp.write("%%%% END SRC %s\n" % os.path.basename(src))
 
     fp.write("\n")
-    fp.write("\\documentclass[12pt,epsf,a4]{article}\n"
+    fp.write("\\documentclass[12pt]{article}\n"
              "\\usepackage{tabularx}\n"
              "\\usepackage{adjustbox}\n"
              "\\usepackage{graphicx}\n"
@@ -639,7 +640,7 @@ def latex_output(fbase, src):
              "Numerical parameters were: relative tolerance %s,\n"
              "absolute tolerance %s and maximum allowed time step %s.\n"
              "\n}\n\n" % (n, neq, lsode_rtol, lsode_atol,
-                          simulation["MAXIMUM_STEP_SIZE"]))
+                          simulation.get("MAXIMUM_STEP_SIZE", "unlimited")))
     
     sx = 0
     for r in rctns:
@@ -647,7 +648,7 @@ def latex_output(fbase, src):
             sx = len(r.text)
 
     # Elementary reaction table
-    fp.write("\\begin{table}\n"
+    fp.write("\\begin{table}\n\\label{table:reactions}\n"
              "\\begin{adjustbox}{width=\\textwidth}\n"
              "\\begin{tabular}{lrclll}\n")
 
@@ -740,7 +741,7 @@ def latex_output(fbase, src):
     fp.write("\\section{Keywords}\n\n")
     if len(config["keywords"]):
         fp.write(", ".join(config["keywords"]))
-    fp.write("\\n\\n")
+    fp.write("\n\n")
 
     fp.write("\\begin{thebibliography}{99}\n"
              "\\bibitem{lsoda} A.C. Hindmarsh, {\\em ODEPACK, A Systematized Collection of ODE Solvers}, in {\\em Scientific Computing}, R.S. Stepleman et al. (Eds.), North--Holland, Amsterdam, {\\bf 1983}, pp. 55-64.\n")
@@ -1208,8 +1209,7 @@ def main(argv):
     elif opts.octave:
         octave_output(opts.name)
     elif opts.latex:
-        print("FIXME: --latex has issues with Python3")
-        # FIXME latex_output(opts.name, fname)
+        latex_output(opts.name, fname)
     else:
         lsoda_c_output("ersimu")
 

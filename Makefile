@@ -17,10 +17,16 @@ test-all: test-parse test-lsodac test-scipy test-octave
 .PHOHY: test-parse
 test-parse:
 	for i in `find examples -type f | sort` ; do \
+      rm -f ersimu.h simulation.m simulation.py simulation.tex ; \
       for opt in --lsodac --octave --scipy --latex ; do \
           echo Parse $$i option $$opt ; \
           ./ersimu.py $$opt $$i || exit 1 ; \
       done ; \
+      test -f ersimu.h || exit 1 ; \
+      test -f simulation.m || exit 1 ; \
+      test -f simulation.py || exit 1 ; \
+      test -f simulation.tex || exit 1 ; \
+      pdflatex simulation.tex > /dev/null 2>&1 || exit 1 ; \
     done
 
 .PHONY: test-scipy
@@ -62,3 +68,9 @@ clean:
 .PHONY: dep
 dep:
 	pip3 install -r requirements.txt --user
+
+.PHONY: install-platform
+install-platform:
+	sudo apt install build-essential gnuplot python3 python3-pip \
+         texlive-latex-base texlive-latex-extra \
+         octave octave-doc
