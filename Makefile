@@ -1,4 +1,5 @@
 OCTAVE = octave
+SHELL = bash
 
 # additional compiler flags
 CFLAGS += -O3
@@ -14,14 +15,21 @@ test:
 .PHONY: test-all
 test-all: test-parse test-lsodac test-scipy test-octave
 
-.PHOHY: test-parse
+.PHONY: test-parse
 test-parse:
 	for i in `find examples -type f | sort` ; do \
       rm -f ersimu.h simulation.m simulation.py simulation.tex ; \
       for opt in --lsodac --octave --scipy --latex ; do \
           echo Parse $$i option $$opt ; \
           ./ersimu.py $$opt $$i || exit 1 ; \
+          name=`basename $$i` ; \
+          name=$${name%.*} ; \
+          name=$${name//-/} ; \
+          echo Parse $$i option $$opt --name $$name ; \
+          ./ersimu.py $$opt $$i --name $$name || exit 1 ; \
       done ; \
+      pdflatex $$name.tex > /dev/null 2>&1 || exit 1 ; \
+      pdflatex $$name.tex > /dev/null 2>&1 || exit 1 ; \
       test -f ersimu.h || exit 1 ; \
       test -f simulation.m || exit 1 ; \
       test -f simulation.py || exit 1 ; \
@@ -32,7 +40,7 @@ test-parse:
 .PHONY: test-scipy
 test-scipy:
 	rm -f test.pdf
-	./ersimu.py --verbose --scipy --name test --run examples/lotka-volterra.txt
+	./ersimu.py --verbose --scipy --name test --run examples/oregonator.txt
 	test -f test.pdf
 
 .PHONY: test-2
@@ -48,6 +56,7 @@ test-octave:
 	./ersimu.py --octave examples/oregonator.txt
 	test -f simulation.m
 	$(OCTAVE) simulation.m
+	test -f simulation.dat
 	./xplot.sh -N test simulation.dat
 
 lsoda: lsoda.c ersimu.h
