@@ -12,7 +12,7 @@ test:
 	$(MAKE) PYTHONDONTWRITEBYTECODE=1 test-all
 
 .PHONY: test-all
-test-all: test-parse test-lsoda test-scipy test-octave
+test-all: test-parse test-lsodac test-scipy test-octave
 
 .PHOHY: test-parse
 test-parse:
@@ -47,8 +47,8 @@ test-octave:
 lsoda: lsoda.c ersimu.h
 	$(CC) $(CFLAGS) $(LSODACFLAGS) -o lsoda lsoda.c -lm
 
-.PHONY: test-lsoda
-test-lsoda:
+.PHONY: test-lsodac
+test-lsodac:
 	rm -f ersimu.h ersimu.mat
 	./ersimu.py examples/brusselator.txt
 	$(MAKE) lsoda
