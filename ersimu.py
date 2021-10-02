@@ -191,8 +191,8 @@ def read_r(fname):
             n +=1
             line = l.strip()
 
-            if config["verbose"] > 1:
-                dbg("LINE %05d: %s" % (n, line))
+            if config["verbose"]:
+                dbg(f"LINE {n:05d} '{line}'")
 
             if len(line) > 0 and '#' != line[0]:
                 if re.search(r'^EXCESS\s', line):
@@ -1148,15 +1148,6 @@ def validate_input():
             raise Exception("Missing SIMULATIONS parameter: %s" % p)
 
 
-def usage():
-    if len(sys.argv) > 0:
-        me = sys.argv[0]
-    else:
-        me = "ersimu.py"
-
-    print("Usage: %s [OPTIONS] FILE" % me)
-
-
 def main(argv):
     opts = get_arg_parser().parse_args()
 
@@ -1180,13 +1171,13 @@ def main(argv):
 
     if config["verbose"]:
         for r in rctns:
-            print(r.i)
-            print(r.reactants)
-            print(r.products)
-            print(r.rates)
-            print(r.kinet())
-            print(r.kinet(False))
-            print(r.species())
+            dbg(f"reaction = {r.i}")
+            dbg(f"reactants = {r.reactants}")
+            dbg(f"products = {r.products}")
+            dbg(f"rates = {r.rates}")
+            dbg(f"fkinet = {r.kinet()}")
+            dbg(f"rkinet = {r.kinet(False)}")
+            dbg(f"species = {r.species()}")
         
     proc_rspcs()
 
