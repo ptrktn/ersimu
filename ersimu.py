@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
-import sys
-import string
-import argparse
-
 """
 FIXME
 """
+
+__version__ = "0.0.1"
+
+import sys
+import string
+import argparse
 
 # FIXME SymPy will be needed for deriving Jacobian (implementation pending)
 # LaTeX output requires sympy
@@ -44,6 +46,7 @@ rspcs = []
 initial = {}
 constant = {}
 simulation = {}
+simulation["T_POINTS"] = 10
 latex = {}
 kf = {}
 kr = {}
@@ -1121,10 +1124,11 @@ import math
                  "max_step=max_step_, atol=atol_, rtol=rtol_)\n")
         #print(z.status, z.nfev)
         n = len(x)
-        fp.write(f"fig, ax = plt.subplots({n}, figsize=(15, 8))\n")
+        fp.write(f"fig, ax = plt.subplots({n}, 1, figsize=(15, 8))\n")
         for i in range(n):
-            fp.write(f"ax[{i}].plot(sol.t.T, sol.y[{i}].T)\n"
-                     f"ax[{i}].set_ylabel('{x[i]}')\n")
+            subplot = f"[{i}]" if n > 1 else ""
+            fp.write(f"ax{subplot}.plot(sol.t.T, sol.y[{i}].T)\n"
+                     f"ax{subplot}.set_ylabel('{x[i]}')\n")
         fp.write(f"plt.show()\nplt.savefig('{fbase}.pdf', bbox_inches='tight')\n")
 
     except:
