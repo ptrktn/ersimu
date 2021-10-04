@@ -176,7 +176,125 @@ class R:
                 
         return c
 
+
+class ERSimu:
+    def __init__(self):
+        self.reactions = []
+        self.x = []
+        self.excess = []
+        self.xdot = []
+        self.xdot_raw = []
+        self.system_species = [] # FIXME dict?
+        self.initial = {}
+        self.constants = {}
+        self.simulation = {}
+        self.simulation["T_POINTS"] = 10
+        self.latex = {}
+        self.kf = {}
+        self.kr = {}
+        self.kinet = {}
+        self.kinet_keys = []
+        self.lsode_atol = "1E-6"
+        self.lsode_rtol = "1E-6"
+        self.n_reactions = None
+        self.n_equations = None
+
+
+    def load(self, fname):
+        fp = open(fname)
+        n = 0
+        nr = 1
+        r = R()
+        for line in fp:
+            n += 1
+            line = line.strip()
+
+            if config["verbose"]:
+                dbg(f"LINE {n:05d} '{line}'")
+
+            if len(line) > 0 and '#' != line[0]:
+                if re.search(r'^EXCESS\s', line):
+                    if len(line.split()) > 1:
+                        for a in line.split()[1:]:
+                            if not a in self.excess:
+                                self.excess.append(a)
+                    continue
+                elif re.search(r'^INITIAL\s', line):
+                    if len(line.split()) > 2:
+                        a, val = line.split()[1:3]
+                        self.initial[a] = val
+                    continue
+                elif re.search(r'^CONSTANT\s', line):
+                    if len(line.split()) > 2:
+                        a, val = line.split()[1:3]
+                        self.constants[a] = val
+                    continue
+                elif re.search(r'^SIMULATION\s', line):
+                    vals = line.split()
+                    if len(vals) > 2:
+                        if "T_END" == vals[1]:
+                            self.simulation["T_END"] = vals[2]
+                        elif "T_POINTS" == vals[1]:
+                            self.simulation["T_POINTS"] = vals[2]
+                        elif "MAXIMUM_STEP_SIZE" == vals[1]:
+                            self.simulation["MAXIMUM_STEP_SIZE"] = vals[2]
+                        elif "INITIAL_STEP_SIZE" == vals[1]:
+                            self.simulation["INITIAL_STEP_SIZE"] = vals[2]
+                        else:
+                            raise Exception("Invalid SIMULATION argument: %s"
+                                            % vals[1])
+                        continue
+                elif re.search(r'^LATEX\s', line):
+                    vals = line.split()
+                    if len(vals) > 2:
+                        self.latex[vals[1]] = vals[2]
+                    continue
+                elif re.search(r'^AUTHOR\s', line):
+                    vals = line.split()
+                    if len(vals) > 2:
+                        config["author"] = " ".join(line.split()[1:])
+                    continue
+                elif re.search(r'^TITLE\s', line):
+                    vals = line.split()
+                    if len(vals) > 2:
+                        config["title"] = " ".join(line.split()[1:])
+                    continue
+                elif re.search(r'^KEYWORD\s', line):
+                    vals = line.split()
+                    if len(vals) > 2:
+                        config["keywords"].append(" ".join(line.split()[1:]))
+                    continue
+                elif re.search(r'^BIBITEM\s', line):
+                    vals = line.split()
+                    if len(vals) > 2:
+                        config["bibitem"].append(" ".join(line.split()[1:]))
+                    continue
+
+                r.reaction(line, nr)
+                self.reactions.append(r)
+                r = R()
+                nr += 1
+
+        fp.close()
+
+        for a in excess:
+            if a not in self.initial:
+                raise Exception("Missing initial value for: %s" % a)
+
+        for p in ["T_END", "T_POINTS"]:
+            if p not in self.simulation:
+                raise Exception("Missing SIMULATIONS parameter: %s" % p)
+
+        for r in self.reactions:
+            for s in r.species():
+                i = s.strip()
+                if not(i in self.system_species):
+                    self.system_species.append(i)
     
+        self.n_reactions = len(self.reactions)
+        self.n_equations = len(self.xdot_raw)
+
+
 def xsmc(r, x):
     c = 0
     for i in map(str.strip, r.split("+")):
@@ -306,33 +424,33 @@ def pretty_kinet(s, y, k):
     return "%s %d * %s" % (s, y, k)
 
 
-def proc_r():
+def proc_r(ers):
 
-    for s in rspcs:
-        if s in excess or s in constant:
+    for s in ers.system_species:
+        if s in ers.excess or s in ers.constants:
             continue
-        x.append(s)
+        ers.x.append(s)
 
-    for r in rctns:
+    for r in ers.reactions:
         k = r.kinet(True)
         if k:
             v = "fkinet%d" % r.i
-            kinet[v] = subst_x(str(symbols2(k)))
-            kinet_keys.append(v)
+            ers.kinet[v] = subst_x(ers, str(symbols2(k)))
+            ers.kinet_keys.append(v)
         k = r.kinet(False)
         if k:
             v = "rkinet%d" % r.i
-            kinet[v] = subst_x(str(symbols2(k)))
-            kinet_keys.append(v)
+            ers.kinet[v] = subst_x(ers, str(symbols2(k)))
+            ers.kinet_keys.append(v)
 
-    for s in rspcs:
+    for s in ers.system_species:
         
-        if s in excess or s in constant:
+        if s in ers.excess or s in ers.constants:
             continue
         
         a = []
         b = []
-        for r in rctns:
+        for r in ers.reactions:
             # A + B -> C + D
             k = r.kinet(True)
             z = "fkinet%d" % r.i
@@ -361,7 +479,7 @@ def proc_r():
                 # b.append("+ %d * %s" % (y, z))
                 b.append(pretty_kinet("+", y, z))
 
-        xdot_raw.append(" ".join(b))
+        ers.xdot_raw.append(" ".join(b))
 
         if config["has_sympy"]:
             global df
@@ -369,22 +487,21 @@ def proc_r():
             exec(cmd, globals())
             dbg(df)
             if config["octave"]:
-                xdot.append(subst_x(str(df)))
+                ers.xdot.append(subst_x(ers, str(df)))
             if config["latex"]:
-                xdot.append(str(df))
+                ers.xdot.append(str(df))
 
 
-
-def subst_x(e):
-    c = list(constant.keys())
+def subst_x(ers, e):
+    c = list(ers.constants.keys())
     
-    for s in rspcs + c:
+    for s in ers.system_species + c:
         s1 = "__%s__" % s
         
-        if s in excess or s in c:
+        if s in ers.excess or s in c:
             s2 = " %s " % s
         else:
-            i = 1 + x.index(s)
+            i = 1 + ers.x.index(s)
             s2 = " x(%i) " % i
             
         e = e.replace(s1, s2)
@@ -829,10 +946,11 @@ def latex_output(fbase, src):
         pass
 
 
-def lsoda_c_output(fbase):
+def lsoda_c_output(ers):
+    fbase = "ersimu"
     fname = "%s.h" % fbase
-    n = len(rctns)
-    neq = len(xdot_raw)
+    n = len(ers.reactions)
+    neq = len(ers.xdot_raw)
     
     try:
         fp = open(fname, "w")
@@ -840,23 +958,23 @@ def lsoda_c_output(fbase):
         fp.write("#ifndef __ERHELPER_H__\n#define __ERHELPER_H__\n\n/*\n")
         
         sx = 0
-        for r in rctns:
+        for r in ers.reactions:
             if len(r.text) > sx:
                 sx = len(r.text)
 
         sx += 3
         fmt = "  %%-%ds (R%%d)\n" % sx
-        for r in rctns:
+        for r in ers.reactions:
             fp.write(fmt % (r.text, r.i))
 
         i = 0
         fp.write("\n")
-        for v in x:
+        for v in ers.x:
             fp.write("  x(%d) %s\n" % (1 + i, v))
             i += 1
 
         fp.write("\n  Plot command:\n\n xplot.sh -t '%s' FILE"
-                 % " ".join(x))
+                 % " ".join(ers.x))
             
         fp.write("\n*/\n")
 
@@ -868,29 +986,29 @@ def lsoda_c_output(fbase):
         
         fp.write("%s" % defs)
 
-        if len(excess):
-            fp.write("\n/* Species in excess %s */\n" % " ".join(excess))
-            for a in excess:
-                if initial.get(a):
-                    fp.write("#define %s (%s)\n" % (a, initial[a]))
+        if len(ers.excess):
+            fp.write("\n/* Species in excess %s */\n" % " ".join(ers.excess))
+            for a in ers.excess:
+                if ers.initial.get(a):
+                    fp.write("#define %s (%s)\n" % (a, ers.initial[a]))
 
-        if len(constant):
-            fp.write("\n/* Constants %s */\n" % " ".join(constant))
+        if len(ers.constants):
+            fp.write("\n/* Constants %s */\n" % " ".join(ers.constants))
             for a in constant:
-                fp.write("#define %s (%s)\n" % (a, constant[a]))
+                fp.write("#define %s (%s)\n" % (a, ers.constants[a]))
 
         fp.write("\n#define NEQ %d\n" % neq)
         fp.write("#define N_REACTIONS %d\n" % n)
-        fp.write("#define T_END %s\n" % simulation["T_END"])
-        fp.write("#define T_DELTA (1/ (double) %s)\n" % simulation["T_POINTS"])
-        fp.write("#define LSODE_ATOL %s\n" % lsode_atol)
-        fp.write("#define LSODE_RTOL %s\n" % lsode_rtol)
-        if "MAXIMUM_STEP_SIZE" in simulation:
+        fp.write("#define T_END %s\n" % ers.simulation["T_END"])
+        fp.write("#define T_DELTA (1/ (double) %s)\n" % ers.simulation["T_POINTS"])
+        fp.write("#define LSODE_ATOL %s\n" % ers.lsode_atol)
+        fp.write("#define LSODE_RTOL %s\n" % ers.lsode_rtol)
+        if "MAXIMUM_STEP_SIZE" in ers.simulation:
             fp.write("#define LSODE_HMAX %s\n" %
-                     simulation["MAXIMUM_STEP_SIZE"])
-        if "INITIAL_STEP_SIZE" in simulation:
+                     ers.simulation["MAXIMUM_STEP_SIZE"])
+        if "INITIAL_STEP_SIZE" in ers.simulation:
             fp.write("#define LSODE_H0 %s\n" %
-                     simulation["INITIAL_STEP_SIZE"])
+                     ers.simulation["INITIAL_STEP_SIZE"])
 
         fp.write("\nstatic double kf[N_REACTIONS+1], kr[N_REACTIONS+1];\n")
         
@@ -904,17 +1022,17 @@ def lsoda_c_output(fbase):
             i += 1
         
         fp.write("\n\t/* initial conditions */\n")
-        for a in x:
-            if a in initial:
-                i = 1 + x.index(a)
-                fp.write("\t/* %s */\n\tx0(%d) = %s ;\n" % (a, i, initial[a]))
+        for a in ers.x:
+            if a in ers.initial:
+                i = 1 + ers.x.index(a)
+                fp.write("\t/* %s */\n\tx0(%d) = %s ;\n" % (a, i, ers.initial[a]))
 
         fp.write("\n\t/* forward reaction rates */\n")
-        for r in rctns:
+        for r in ers.reactions:
             if r.rates[0]:
                 fp.write("\tkf(%d) = %s ;\n" % (r.i, r.kf))
         fp.write("\n\t/* reverse reaction rates */\n")
-        for r in rctns:
+        for r in ers.reactions:
             if r.rates[1]:
                 fp.write("\tkr(%d) = %s ;\n" % (r.i, r.kr))
                 
@@ -922,15 +1040,15 @@ def lsoda_c_output(fbase):
                 
         fp.write("\nstatic void fex(double t, double *x, double *xdot, void *data)\n{\n")
 
-        for i in kinet_keys:
-            fp.write("\tdouble %s = %s ;\n" % (i, kinet[i]))
+        for i in ers.kinet_keys:
+            fp.write("\tdouble %s = %s ;\n" % (i, ers.kinet[i]))
         fp.write("\n")
 
         # FIXME zeros
         i = 0
-        for dx in xdot_raw:
-            fp.write("\t/* %s */\n" % x[i])
-            fp.write("\txdot(%d) = %s ; \n" % (i + 1, xdot_raw[i]))
+        for dx in ers.xdot_raw:
+            fp.write("\t/* %s */\n" % ers.x[i])
+            fp.write("\txdot(%d) = %s ; \n" % (i + 1, ers.xdot_raw[i]))
             i += 1
 
         fp.write("\n}\n")
@@ -1169,12 +1287,12 @@ def main(argv):
     config["latex"] = opts.latex
     fname = opts.inputfile
 
-    read_r(fname)
-
-    validate_input()
-
+    ers = ERSimu()
+    ers.load(fname)
+    proc_r(ers)
+    
     if config["verbose"]:
-        for r in rctns:
+        for r in ers.reactions:
             dbg(f"reaction = {r.i}")
             dbg(f"reactants = {r.reactants}")
             dbg(f"products = {r.products}")
@@ -1182,20 +1300,28 @@ def main(argv):
             dbg(f"fkinet = {r.kinet()}")
             dbg(f"rkinet = {r.kinet(False)}")
             dbg(f"species = {r.species()}")
-        
-    proc_rspcs()
+    dbg("SYSTEM SPECIES %s" % ers.system_species)
+    dbg("X %s" % ers.x)
+    dbg("EXCESS %s" % ers.excess)
+    dbg("INITIAL %s" % ers.initial)
+    dbg("CONSTANTs %s" % ers.constants)
 
-    proc_r()
-
-    for k in kinet:
-        dbg("KINET %s = %s" % (k, kinet[k]))
+    for k in ers.kinet:
+        dbg("KINET %s = %s" % (k, ers.kinet[k]))
 
     i = 0
-    for dx in xdot_raw:
+    for dx in ers.xdot_raw:
         if config["latex"] or config["octave"]:
-            dbg("xdot(%d) = %s ; " % (i + 1, xdot[i]))
-        dbg("xdot_raw(%d) = %s ; " % (i + 1, xdot_raw[i]))
+            dbg("xdot(%d) = %s ; " % (i + 1, ers.xdot[i]))
+        dbg("xdot_raw(%d) = %s ; " % (i + 1, ers.xdot_raw[i]))
         i += 1
+
+    for ltx in latex:
+        dbg("LATEX %s = %s" % (ltx, latex[ltx]))
+
+    lsoda_c_output(ers)
+
+    return # FIXME
 
     if opts.scipy:
         scipy_output(opts.name)
@@ -1207,14 +1333,6 @@ def main(argv):
         latex_output(opts.name, fname)
     else:
         lsoda_c_output("ersimu")
-
-    dbg("X %s" % x)
-    dbg("EXCESS %s" % excess)
-    dbg("INITIAL %s" % initial)
-    dbg("CONSTANT %s" % constant)
-
-    for ltx in latex:
-        dbg("LATEX %s = %s" % (ltx, latex[ltx]))
 
 
 if "__main__" == __name__:
