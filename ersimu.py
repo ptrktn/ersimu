@@ -37,23 +37,6 @@ config["author"] = None
 config["bibitem"] = []
 config["keywords"] = []
 
-rctns = list(())
-x = list(())
-excess = list(())
-xdot = list(())
-xdot_raw = list(())
-rspcs = []
-initial = {}
-constant = {}
-simulation = {}
-simulation["T_POINTS"] = 10
-latex = {}
-kf = {}
-kr = {}
-kinet = {}
-kinet_keys = []
-lsode_atol = "1E-6"
-lsode_rtol = "1E-6"
 
 def dbg(msg):
     if config["verbose"]:
@@ -97,7 +80,7 @@ class R:
         self.kf = 1
         self.kr = 1
 
-    def reaction(self, r, n):
+    def reaction(self, r, n, ers):
         self.i = n
 
         if " <==> " in r:
@@ -136,7 +119,7 @@ class R:
         for c in rct.replace(cs, "+").replace("*", "+").split("+"):
             c = c.strip()
             for d in c.split():
-                if not(d in constant):
+                if not(d in ers.constants):
                     self.s[d] = 1 + self.s.get(d, 0)
 
     def kinet(self, d=True):
@@ -270,14 +253,14 @@ class ERSimu:
                         config["bibitem"].append(" ".join(line.split()[1:]))
                     continue
 
-                r.reaction(line, nr)
+                r.reaction(line, nr, self)
                 self.reactions.append(r)
                 r = R()
                 nr += 1
 
         fp.close()
 
-        for a in excess:
+        for a in self.excess:
             if a not in self.initial:
                 raise Exception("Missing initial value for: %s" % a)
 
@@ -301,82 +284,6 @@ def xsmc(r, x):
         if x == i:
             c += 1
     return c
-
-
-def read_r(fname):
-    with open(fname) as f:
-        n = 0
-        nr = 1
-        r = R()
-        for l in f:
-            n +=1
-            line = l.strip()
-
-            if config["verbose"]:
-                dbg(f"LINE {n:05d} '{line}'")
-
-            if len(line) > 0 and '#' != line[0]:
-                if re.search(r'^EXCESS\s', line):
-                    if len(line.split()) > 1:
-                        for a in line.split()[1:]:
-                            if not a in excess:
-                                excess.append(a)
-                    continue
-                elif re.search(r'^INITIAL\s', line):
-                    if len(line.split()) > 2:
-                        a, val = line.split()[1:3]
-                        initial[a] = val
-                    continue
-                elif re.search(r'^CONSTANT\s', line):
-                    if len(line.split()) > 2:
-                        a, val = line.split()[1:3]
-                        constant[a] = val
-                    continue
-                elif re.search(r'^SIMULATION\s', line):
-                    vals = line.split()
-                    if len(vals) > 2:
-                        if "T_END" == vals[1]:
-                            simulation["T_END"] = vals[2]
-                        elif "T_POINTS" == vals[1]:
-                            simulation["T_POINTS"] = vals[2]
-                        elif "MAXIMUM_STEP_SIZE" == vals[1]:
-                            simulation["MAXIMUM_STEP_SIZE"] = vals[2]
-                        elif "INITIAL_STEP_SIZE" == vals[1]:
-                            simulation["INITIAL_STEP_SIZE"] = vals[2]
-                        else:
-                            raise Exception("Invalid SIMULATION argument: %s"
-                                            % vals[1])
-                        continue
-                elif re.search(r'^LATEX\s', line):
-                    vals = line.split()
-                    if len(vals) > 2:
-                        latex[vals[1]] = vals[2]
-                    continue
-                elif re.search(r'^AUTHOR\s', line):
-                    vals = line.split()
-                    if len(vals) > 2:
-                        config["author"] = " ".join(line.split()[1:])
-                    continue
-                elif re.search(r'^TITLE\s', line):
-                    vals = line.split()
-                    if len(vals) > 2:
-                        config["title"] = " ".join(line.split()[1:])
-                    continue
-                elif re.search(r'^KEYWORD\s', line):
-                    vals = line.split()
-                    if len(vals) > 2:
-                        config["keywords"].append(" ".join(line.split()[1:]))
-                    continue
-                elif re.search(r'^BIBITEM\s', line):
-                    vals = line.split()
-                    if len(vals) > 2:
-                        config["bibitem"].append(" ".join(line.split()[1:]))
-                    continue
-
-                r.reaction(line, nr)
-                rctns.append(r)
-                r = R()
-                nr += 1
 
 
 def proc_rspcs():
@@ -511,8 +418,8 @@ def subst_x(ers, e):
     return " ".join(e.split())
 
 
-def latex_sub(s, eq=True):
-    for j in latex:
+def latex_sub(ers, s, eq=True):
+    for j in ers.latex:
         if s == j:
             if eq:
                 return latex[j]
@@ -522,7 +429,7 @@ def latex_sub(s, eq=True):
     return s
 
 
-def latex_sub2(s):
+def latex_sub2(ers, s):
     # FIXME constants, excess
     x = s
     x = re.sub(r'\*\*(\d{1,})', r'^{\1}', s)
@@ -532,21 +439,21 @@ def latex_sub2(s):
     x = re.sub(r'(\d{1,})(\*)', r'\1', x)
     x = re.sub(r'\*', r'', x)
 
-    if len(constant):
-        for a in constant:
-            if a in latex:
-                x = x.replace("[\\mathrm{" + a + "}]", latex_sub(a))
+    if len(ers.constants):
+        for a in ers.constants:
+            if a in ers.latex:
+                x = x.replace("[\\mathrm{" + a + "}]", latex_sub(ers, a))
             else:
                 x = x.replace("[\\mathrm{" + a + "}]", "\\mathrm{%s}" % a)
 
-    for a in latex:
-        l = "{[\\mathrm{%s}]}" % latex[a]
+    for a in ers.latex:
+        l = "{[\\mathrm{%s}]}" % ers.latex[a]
         x = x.replace("[\\mathrm{" + a + "}]", l)
 
     return x
 
 
-def latex_reaction_fmt(s):
+def latex_reaction_fmt(ers, s):
     res = []
     seen = {}
     
@@ -566,14 +473,14 @@ def latex_reaction_fmt(s):
             if x == j:
                 n += 1
 
-        if x not in latex:
+        if x not in ers.latex:
             if n > 1:
                 res.append(str(n) + " " + x)
             else:
                 res.append(x)                    
             continue
                 
-        for j in latex:
+        for j in ers.latex:
             if i == j:
                 x = "$\\mathrm{%s}$" % latex[j]
                 if n > 1:
@@ -700,19 +607,19 @@ def dx_sorted(v):
     return " ".join(r)
 
 
-def latex_vrate(v):
+def latex_vrate(ers, v):
     global tmp_vrate
     exec("tmp_vrate = str(%s)" % symbols(" * ".join(v.split("*"))), globals())
     dbg(f"VRATE = {tmp_vrate}")
     r = rate_sorted(tmp_vrate)
-    r = latex_sub2(r)
+    r = latex_sub2(ers, r)
     return r
 
 
-def latex_output(fbase, src):
+def latex_output(ers, fbase, src):
     fname = "%s.tex" % fbase
-    n = len(rctns)
-    neq = len(xdot_raw)
+    n = len(ers.reactions)
+    neq = len(ers.xdot_raw)
     
     try:
         fp = open(fname, "w")
@@ -759,11 +666,11 @@ def latex_output(fbase, src):
              "and stiff initial value problems~\\cite{lsoda}.\n"
              "Numerical parameters were: relative tolerance %s,\n"
              "absolute tolerance %s and maximum allowed time step %s.\n"
-             "\n}\n\n" % (n, neq, lsode_rtol, lsode_atol,
-                          simulation.get("MAXIMUM_STEP_SIZE", "unlimited")))
+             "\n}\n\n" % (n, neq, ers.lsode_rtol, ers.lsode_atol,
+                          ers.simulation.get("MAXIMUM_STEP_SIZE", "unlimited")))
     
     sx = 0
-    for r in rctns:
+    for r in ers.reactions:
         if len(r.text) > sx:
             sx = len(r.text)
 
@@ -779,19 +686,19 @@ def latex_output(fbase, src):
     ne = 0
     nekinet = []
 
-    for r in rctns:
+    for r in ers.reactions:
         nr += 1
         fp.write("%%")
         fp.write(fmt % (r.text, r.i))
         fp.write("(R%d) & " % r.i)
-        fp.write("%s & " % latex_reaction_fmt(r.reactants))
+        fp.write("%s & " % latex_reaction_fmt(ers, r.reactants))
 
         if [1, 0] == r.rates:
             fp.write("%s & " % chemuni(r.i))
         else:
             fp.write("%s & " % chembi(r.i))
         
-        fp.write("%s " % latex_reaction_fmt(r.products))
+        fp.write("%s " % latex_reaction_fmt(ers, r.products))
 
         # Forward reaction rates (or exceptions)
         fp.write(" & ")
@@ -799,7 +706,7 @@ def latex_output(fbase, src):
             fp.write("%s" % latex_rc(r.kf, r.reactants))
         elif r.rates[0] and r.frate:
             ne += 1
-            nekinet.append("$v_{%d} = %s$" % (r.i, latex_vrate(r.frate)))
+            nekinet.append("$v_{%d} = %s$" % (r.i, latex_vrate(ers, r.frate)))
             fp.write(" ($v_{%d}$) " % r.i)
 
         # Reverse reactions rates (or exceptions)
@@ -823,10 +730,10 @@ def latex_output(fbase, src):
         fp.write("Exceptions in mass action kinetic model: %s.\n"
                  % ", ".join(nekinet))
 
-    if len(constant):
+    if len(ers.constants):
         c = []
-        for a in constant:
-            c.append("%s = %s" % (latex_sub(a, False), constant[a]))
+        for a in ers.constants:
+            c.append("%s = %s" % (latex_sub(ers, a, False), ers.constants[a]))
         fp.write("Constants: %s." % ", ".join(c))
         
     fp.write("}\n"
@@ -836,13 +743,13 @@ def latex_output(fbase, src):
     fp.write("\\begin{eqnarray}\n")
 
     i = 0
-    for dx in xdot:
+    for dx in ers.xdot:
         dx = dx_sorted(dx)
-        dx = latex_sub2(dx)
-        dx = eqnarray_rhs(dx, x[i])
-        fp.write("%% /* %s */\n" % x[i])
+        dx = latex_sub2(ers, dx)
+        dx = eqnarray_rhs(dx, ers.x[i])
+        fp.write("%% /* %s */\n" % ers.x[i])
         fp.write("\\frac{d [\\mathrm{%s}]}{dt} & = & %s" %
-                 (latex_sub(x[i]), dx))
+                 (latex_sub(ers, ers.x[i]), dx))
         if i != (neq - 1):
             fp.write("\\\\")
         fp.write("\n")
@@ -860,7 +767,7 @@ def latex_output(fbase, src):
 
     fp.write("\\section{Keywords}\n\n")
     if len(config["keywords"]):
-        fp.write(", ".join(config["keywords"]))
+        fp.write(", ".join(ers.config["keywords"]))
     fp.write("\n\n")
 
     fp.write("\\begin{thebibliography}{99}\n"
@@ -874,69 +781,19 @@ def latex_output(fbase, src):
     
     i = 0
     fp.write("\n")
-    for v in x:
+    for v in ers.x:
         fp.write("%%")
         fp.write("  x_%d = %s\n" % (1 + i, v))
         i += 1
 
     fp.write("\n")
 
-    if len(excess):
-        fp.write("%%%% Species in excess: %s\n" % " ".join(excess))
-        for a in excess:
-            if initial.get(a):
-                fp.write("%%%% #define %s (%s)\n" % (a, initial[a]))
+    if len(ers.excess):
+        fp.write("%%%% Species in excess: %s\n" % " ".join(ers.excess))
+        for a in ers.excess:
+            if ers.initial.get(a):
+                fp.write("%%%% #define %s (%s)\n" % (a, ers.initial[a]))
         fp.write("\n")
-
-    if False:
-        fp.write("\n#define NEQ %d\n" % neq)
-        fp.write("#define N_REACTIONS %d\n" % n)
-        fp.write("#define T_END %s\n" % simulation["T_END"])
-        fp.write("#define T_DELTA (1/ (double) %s)\n" % simulation["T_POINTS"])
-        fp.write("#define LSODE_ATOL %s\n" % lsode_atol)
-        fp.write("#define LSODE_RTOL %s\n" % lsode_rtol)
-        if "MAXIMUM_STEP_SIZE" in simulation:
-            fp.write("#define LSODE_HMAX %s\n" %
-                     simulation["MAXIMUM_STEP_SIZE"])
-        if "INITIAL_STEP_SIZE" in simulation:
-            fp.write("#define LSODE_H0 %s\n" %
-                     simulation["INITIAL_STEP_SIZE"])
-
-        fp.write("\nstatic double kf[N_REACTIONS+1], kr[N_REACTIONS+1];\n")
-        
-        fp.write("\nstatic void erhelper_init(double *x, double *abstol, double *reltol)\n{\n")
-
-        i = 0
-        while i <= neq:
-            fp.write("\tabstol[%d] = LSODE_ATOL;\n" % i)
-            fp.write("\treltol[%d] = LSODE_RTOL;\n" % i)
-            fp.write("\tx0(%d) = 0;\n" % i)
-            i += 1
-            
-        fp.write("\n\t/* initial conditions */\n")
-        for a in x:
-            if a in initial:
-                i = 1 + x.index(a)
-                fp.write("\t/* %s */\n\tx0(%d) = %s ;\n" % (a, i, initial[a]))
-                
-        fp.write("\n}\n")
-        
-        fp.write("\nstatic void fex(double t, double *x, double *xdot, void *data)\n{\n")
-
-        for i in kinet_keys:
-            fp.write("\tdouble %s = %s ;\n" % (i, kinet[i]))
-            fp.write("\n")
-
-        # FIXME zeros
-        i = 0
-        for dx in xdot_raw:
-            fp.write("\t/* %s */\n" % x[i])
-            fp.write("\txdot(%d) = %s ; \n" % (i + 1, xdot_raw[i]))
-            i += 1
-
-        fp.write("\n}\n")
-
-        fp.write("\n#endif\n")
 
     fp.close()
 
@@ -946,8 +803,7 @@ def latex_output(fbase, src):
         pass
 
 
-def lsoda_c_output(ers):
-    fbase = "ersimu"
+def lsoda_c_output(ers, fbase):
     fname = "%s.h" % fbase
     n = len(ers.reactions)
     neq = len(ers.xdot_raw)
@@ -994,7 +850,7 @@ def lsoda_c_output(ers):
 
         if len(ers.constants):
             fp.write("\n/* Constants %s */\n" % " ".join(ers.constants))
-            for a in constant:
+            for a in ers.constants:
                 fp.write("#define %s (%s)\n" % (a, ers.constants[a]))
 
         fp.write("\n#define NEQ %d\n" % neq)
@@ -1066,10 +922,10 @@ def lsoda_c_output(ers):
         pass
 
 
-def octave_output(fbase):
+def octave_output(ers, fbase):
     fname = "%s.m" % fbase
     mname = "%s.dat" % fbase
-    n = len(rctns)
+    n = len(ers.reactions)
 
     try:
         fp = open(fname, "w")
@@ -1077,71 +933,66 @@ def octave_output(fbase):
         fp.write("#!/usr/bin/octave -qf\n")
         fp.write("# -*-octave-*-\n")
 
-        sx = 0
-        for r in rctns:
-            if len(r.text) > sx:
-                sx = len(r.text)
-
-        sx += 3
-        fmt = "# %%-%ds (R%%d)\n" % sx
-        for r in rctns:
-            fp.write(fmt % (r.text, r.i))
+        dump_model_in_comments(ers, fp, "#")
 
         fp.write("more off\n")
         fp.write("global kf kr ;\n")
 
-        if len(excess):
-            fp.write("\n# Species in excess\nglobal %s ;\n" % " ".join(excess))
-            for a in excess:
-                if initial.get(a):
-                    fp.write("%s = %s ;\n" % (a, initial[a]))
+        if len(ers.excess):
+            fp.write("\n# Species in excess\nglobal %s ;\n" % " ".join(ers.excess))
+            for a in ers.excess:
+                if ers.initial.get(a):
+                    fp.write("%s = %s ;\n" % (a, ers.initial[a]))
 
-        if len(constant):
-            fp.write("\n# Constants\nglobal %s ;\n" % " ".join(constant))
-            for a in constant:
-                fp.write("%s = %s ;\n" % (a, constant[a]))
+        if len(ers.constants):
+            fp.write("\n# Constants\nglobal %s ;\n" % " ".join(ers.constants))
+            for a in ers.constants:
+                fp.write("%s = %s ;\n" % (a, ers.constants[a]))
 
         fp.write("\n# forward reaction rates\nkf = zeros(%d, 1) ;\n" % n)
-        for r in rctns:
+        for r in ers.reactions:
             if r.rates[0]:
                 fp.write("kf(%d) = %s ;\n" % (r.i, r.kf))
 
         fp.write("\n# reverse reaction rates\nkr = zeros(%d, 1) ;\n" % n)
-        for r in rctns:
+        for r in ers.reactions:
             if r.rates[1]:
                 fp.write("kr(%d) = %s ;\n" % (r.i, r.kr))
 
-        fp.write("\n# initial conditions\nx0 = zeros(%d, 1) ;\n" % len(xdot))
-        for a in x:
-            if a in initial:
-                i = 1 + x.index(a)
-                fp.write("# %s\nx0(%d) = %s ;\n" % (a, i, initial[a]))
+        fp.write("\n# initial conditions\nx0 = zeros(%d, 1) ;\n" % len(ers.xdot))
+
+        # FIXME Jacobian
+
+        for a in ers.x:
+            if a in ers.initial:
+                i = 1 + ers.x.index(a)
+                fp.write("# %s\nx0(%d) = %s ;\n" % (a, i, ers.initial[a]))
         fp.write("\nfunction xdot = f (x, t)\n")
         fp.write("    global kf kr ;\n")
 
-        if len(excess):
-            fp.write("    global %s ;\n" % " ".join(excess))
-        if len(constant):
-            fp.write("    global %s ;\n" % " ".join(constant))
+        if len(ers.excess):
+            fp.write("    global %s ;\n" % " ".join(ers.excess))
+        if len(ers.constants):
+            fp.write("    global %s ;\n" % " ".join(ers.constants))
 
-        fp.write("    xdot = zeros(%d, 1) ;\n" % len(xdot))
+        fp.write("    xdot = zeros(%d, 1) ;\n" % len(ers.xdot))
         i = 0
-        for dx in xdot:
-            fp.write("    xdot(%d) = %s ; \n" % (i + 1, xdot[i]))
+        for dx in ers.xdot:
+            fp.write("    xdot(%d) = %s ; \n" % (i + 1, ers.xdot[i]))
             i += 1
         
         fp.write("endfunction\n")
 
         fp.write("\nlsode_options(\"integration method\", \"stiff\") ;\n")
 
-        if "MAXIMUM_STEP_SIZE" in simulation:
+        if "MAXIMUM_STEP_SIZE" in ers.simulation:
             fp.write("lsode_options(\"maximum step size\", %s) ;\n" %
-                     simulation["MAXIMUM_STEP_SIZE"])
+                     ers.simulation["MAXIMUM_STEP_SIZE"])
 
-        fp.write("lsode_options(\"absolute tolerance\", %s) ;\n" % lsode_atol)
-        fp.write("lsode_options(\"relative tolerance\", %s) ;\n" % lsode_rtol)
-        fp.write("\nt_end = %s ;\n" % simulation["T_END"])
-        fp.write("t_points = %s ;\n" % simulation["T_POINTS"])
+        fp.write("lsode_options(\"absolute tolerance\", %s) ;\n" % ers.lsode_atol)
+        fp.write("lsode_options(\"relative tolerance\", %s) ;\n" % ers.lsode_rtol)
+        fp.write("\nt_end = %s ;\n" % ers.simulation["T_END"])
+        fp.write("t_points = %s ;\n" % ers.simulation["T_POINTS"])
         fp.write("t = linspace(0, t_end, t_end * t_points) ;\n")
         fp.write("tstart = cputime ;\n")
         fp.write("  [y, istate, msg] = lsode (\"f\", x0, t) ;\n")
@@ -1163,9 +1014,22 @@ def octave_output(fbase):
     except:
         pass
 
-def scipy_output(fbase):
+
+def dump_model_in_comments(ers, fp, comment_string="#"):
+    sx = 0
+    for r in ers.reactions:
+        if len(r.text) > sx:
+            sx = len(r.text)
+
+    sx += 3
+    fmt = "%s %%-%ds (R%%d)\n" % (comment_string, sx)
+    for r in ers.reactions:
+        fp.write(fmt % (r.text, r.i))
+
+
+def scipy_output(ers, fbase):
     fname = f"{fbase}.py"
-    n = len(rctns)
+    n = len(ers.reactions)
 
     try:
         fp = open(fname, "w")
@@ -1179,74 +1043,66 @@ import numpy as np
 import math
 \n""")
 
-        sx = 0
-        for r in rctns:
-            if len(r.text) > sx:
-                sx = len(r.text)
+        dump_model_in_comments(ers, fp, "#")
 
-        sx += 3
-        fmt = "# %%-%ds (R%%d)\n" % sx
-        for r in rctns:
-            fp.write(fmt % (r.text, r.i))
+        if len(ers.excess):
+            fp.write("\n# Species in excess\n#global %s ;\n" % " ".join(ers.excess))
+            for a in ers.excess:
+                if ers.initial.get(a):
+                    fp.write("%s = %s ;\n" % (a, ers.initial[a]))
 
-        if len(excess):
-            fp.write("\n# Species in excess\n#global %s ;\n" % " ".join(excess))
-            for a in excess:
-                if initial.get(a):
-                    fp.write("%s = %s ;\n" % (a, initial[a]))
-
-        if len(constant):
-            fp.write("\n# Constants\n#global %s ;\n" % " ".join(constant))
-            for a in constant:
-                fp.write("%s = %s ;\n" % (a, constant[a]))
+        if len(ers.constants):
+            fp.write("\n# Constants\n#global %s ;\n" % " ".join(ers.constants))
+            for a in ers.constants:
+                fp.write("%s = %s ;\n" % (a, ers.constants[a]))
 
         fp.write("\n# forward reaction rates\nkf = np.zeros(%d) ;\n" % n)
-        for r in rctns:
+        for r in ers.reactions:
             if r.rates[0]:
                 fp.write("kf[%d] = %s ;\n" % (r.i - 1, r.kf))
 
         fp.write("\n# reverse reaction rates\nkr = np.zeros(%d) ;\n" % n)
-        for r in rctns:
+        for r in ers.reactions:
             if r.rates[1]:
                 fp.write("kr[%d] = %s ;\n" % (r.i - 1, r.kr))
 
-        fp.write("\n# initial conditions\nx0 = np.zeros(%d) ;\n" % len(xdot_raw))
-        for a in x:
-            if a in initial:
-                i = x.index(a)
-                fp.write("# %s\nx0[%d] = %s ;\n" % (a, i, initial[a]))
+        fp.write("\n# initial conditions\nx0 = np.zeros(%d) ;\n" % len(ers.xdot_raw))
+        for a in ers.x:
+            if a in ers.initial:
+                i = ers.x.index(a)
+                fp.write("# %s\nx0[%d] = %s ;\n" % (a, i, ers.initial[a]))
 
         fp.write("\ndef f(t, x):\n")
-        fp.write("    xdot = np.zeros((%d, 1))\n" % len(xdot_raw))
+        fp.write("    xdot = np.zeros((%d, 1))\n" % len(ers.xdot_raw))
 
-        for i in kinet_keys:
-            e = re.sub(r'([x,kf,kr])\((\d+)\)', lambda x: x.groups()[0] + "[" + str(int(x.groups()[1]) - 1) + "]", kinet[i])
+        for i in ers.kinet_keys:
+            e = re.sub(r'([x,kf,kr])\((\d+)\)', lambda z: z.groups()[0] + "[" + str(int(z.groups()[1]) - 1) + "]", ers.kinet[i])
             fp.write("    %s = %s\n" % (i, e))
         fp.write("\n")
 
         i = 0
-        for dx in xdot_raw:
-            fp.write("    xdot[%d] = %s\n" % (i, xdot_raw[i]))
+        for dx in ers.xdot_raw:
+            fp.write("    xdot[%d] = %s\n" % (i, ers.xdot_raw[i]))
             i += 1
 
         fp.write("\n    return xdot\n\n\n")
 
-        fp.write("max_step_ =  %s\n" % simulation.get("MAXIMUM_STEP_SIZE", "np.inf"))
-        fp.write("atol_ = %s\n" % lsode_atol)
-        fp.write("rtol_ = %s\n" % lsode_rtol)
-        fp.write("t_end = %s\n" % simulation["T_END"])
-        fp.write("t_points = %s\n" % simulation["T_POINTS"])
+        fp.write("max_step_ =  %s\n" % ers.simulation.get("MAXIMUM_STEP_SIZE", "np.inf"))
+        fp.write("atol_ = %s\n" % ers.lsode_atol)
+        fp.write("rtol_ = %s\n" % ers.lsode_rtol)
+        fp.write("t_end = %s\n" % ers.simulation["T_END"])
+        fp.write("t_points = %s\n" % ers.simulation["T_POINTS"])
         fp.write("t = np.linspace(0, t_end, t_end * t_points)\n")
         fp.write("sol = solve_ivp(f, (0, t_end), x0, t_eval=t, "
                  "method='LSODA', dense_output=True, vectorized=True, "
                  "max_step=max_step_, atol=atol_, rtol=rtol_)\n")
-        #print(z.status, z.nfev)
-        n = len(x)
+
+        n = len(ers.x)
         fp.write(f"fig, ax = plt.subplots({n}, 1, figsize=(15, 8))\n")
         for i in range(n):
             subplot = f"[{i}]" if n > 1 else ""
             fp.write(f"ax{subplot}.plot(sol.t.T, sol.y[{i}].T)\n"
-                     f"ax{subplot}.set_ylabel('{x[i]}')\n")
+                     f"ax{subplot}.set_ylabel('{ers.x[i]}')\n")
         fp.write(f"plt.show()\nplt.savefig('{fbase}.pdf', bbox_inches='tight')\n")
 
     except:
@@ -1289,17 +1145,16 @@ def main(argv):
 
     ers = ERSimu()
     ers.load(fname)
-    proc_r(ers)
+    proc_r(ers) # FIXME move to ERSimu
     
-    if config["verbose"]:
-        for r in ers.reactions:
-            dbg(f"reaction = {r.i}")
-            dbg(f"reactants = {r.reactants}")
-            dbg(f"products = {r.products}")
-            dbg(f"rates = {r.rates}")
-            dbg(f"fkinet = {r.kinet()}")
-            dbg(f"rkinet = {r.kinet(False)}")
-            dbg(f"species = {r.species()}")
+    for r in ers.reactions:
+        dbg(f"reaction = {r.i}")
+        dbg(f"reactants = {r.reactants}")
+        dbg(f"products = {r.products}")
+        dbg(f"rates = {r.rates}")
+        dbg(f"fkinet = {r.kinet()}")
+        dbg(f"rkinet = {r.kinet(False)}")
+        dbg(f"species = {r.species()}")
     dbg("SYSTEM SPECIES %s" % ers.system_species)
     dbg("X %s" % ers.x)
     dbg("EXCESS %s" % ers.excess)
@@ -1316,23 +1171,19 @@ def main(argv):
         dbg("xdot_raw(%d) = %s ; " % (i + 1, ers.xdot_raw[i]))
         i += 1
 
-    for ltx in latex:
+    for ltx in ers.latex:
         dbg("LATEX %s = %s" % (ltx, latex[ltx]))
 
-    lsoda_c_output(ers)
-
-    return # FIXME
-
     if opts.scipy:
-        scipy_output(opts.name)
+        scipy_output(ers, opts.name)
         if opts.run:
             exec(f"import {opts.name}")
     elif opts.octave:
-        octave_output(opts.name)
+        octave_output(ers, opts.name)
     elif opts.latex:
-        latex_output(opts.name, fname)
+        latex_output(ers, opts.name, fname)
     else:
-        lsoda_c_output("ersimu")
+        lsoda_c_output(ers, "ersimu")
 
 
 if "__main__" == __name__:
