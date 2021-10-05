@@ -32,10 +32,6 @@ config["latex"] = False
 config["scipy"] = False
 config["run"] = False
 config["name"] = "simulation"
-config["title"] = "Simulation"
-config["author"] = None
-config["bibitem"] = []
-config["keywords"] = []
 
 
 def dbg(msg):
@@ -173,6 +169,10 @@ class ERSimu:
         self.simulation = {}
         self.simulation["T_POINTS"] = 10
         self.latex = {}
+        self.bibitem = []
+        self.title = "Simulation"
+        self.author = None
+        self.keywords = []
         self.kf = {}
         self.kr = {}
         self.kinet = {}
@@ -235,22 +235,22 @@ class ERSimu:
                 elif re.search(r'^AUTHOR\s', line):
                     vals = line.split()
                     if len(vals) > 2:
-                        config["author"] = " ".join(line.split()[1:])
+                        self.author = " ".join(line.split()[1:])
                     continue
                 elif re.search(r'^TITLE\s', line):
                     vals = line.split()
                     if len(vals) > 2:
-                        config["title"] = " ".join(line.split()[1:])
+                        self.title = " ".join(line.split()[1:])
                     continue
                 elif re.search(r'^KEYWORD\s', line):
                     vals = line.split()
                     if len(vals) > 2:
-                        config["keywords"].append(" ".join(line.split()[1:]))
+                        self.keywords.append(" ".join(line.split()[1:]))
                     continue
                 elif re.search(r'^BIBITEM\s', line):
                     vals = line.split()
                     if len(vals) > 2:
-                        config["bibitem"].append(" ".join(line.split()[1:]))
+                        self.bibitem.append(" ".join(line.split()[1:]))
                     continue
 
                 r.reaction(line, nr, self)
@@ -644,7 +644,7 @@ def latex_output(ers, fbase, src):
              "\\title{%s}\n"
              "\\date{\\today}\n"
              "\\author{%s}\n"
-             "\\maketitle\n\n" % (config["title"], config["author"]))
+             "\\maketitle\n\n" % (ers.title, ers.author))
              
     fp.write("\\section{Abstract}\n"
              "\\IfFileExists{abstract.tex}{\n\\input{abstract}\n}{\n"
@@ -766,13 +766,13 @@ def latex_output(ers, fbase, src):
              "\n}{\n%%%% Tabula rasa\n}\n\n")
 
     fp.write("\\section{Keywords}\n\n")
-    if len(config["keywords"]):
-        fp.write(", ".join(ers.config["keywords"]))
+    if len(ers.keywords):
+        fp.write(", ".join(ers.keywords))
     fp.write("\n\n")
 
     fp.write("\\begin{thebibliography}{99}\n"
              "\\bibitem{lsoda} A.C. Hindmarsh, {\\em ODEPACK, A Systematized Collection of ODE Solvers}, in {\\em Scientific Computing}, R.S. Stepleman et al. (Eds.), North--Holland, Amsterdam, {\\bf 1983}, pp. 55-64.\n")
-    for i in config["bibitem"]:
+    for i in ers.bibitem:
         fp.write("\\bibitem{%s} %s\n"
                  % (i.split()[0], " ".join(i.split()[1:])))
     fp.write("\\end{thebibliography}\n\n")
