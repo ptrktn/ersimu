@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 """
-FIXME
+ERSimu: A software for exploring chemical kinetics and dynamics in elementary 
+reaction systems.
 """
 
 __version__ = "0.0.2"
@@ -49,14 +50,14 @@ def get_arg_parser():
         prog=os.path.basename(__file__), description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("--latex", action="store_true", dest="latex", default=False, help="Generate LaTeX output")
-    parser.add_argument("--lsodac", action="store_true", dest="lsodac", default=True, help="Generate LSODA C output (default)")
-    parser.add_argument("--name", type=str, dest="name", default="simulation", help="Output name")
-    parser.add_argument("--octave", action="store_true", dest="octave", default=False, help="Generate GNU Octave output")
-    parser.add_argument("--run", action="store_true", dest="run", default=False, help="Run the simulation")
-    parser.add_argument("--scipy", action="store_true", dest="scipy", default=False, help="Generate SciPy output")
-    parser.add_argument("--verbose", action="store_true", dest="verbose", default=False, help="Be verbose")
-    parser.add_argument("inputfile", metavar="FILE", type=str, help="Input file name")
+    parser.add_argument("--latex", action="store_true", dest="latex", default=False, help="generate LaTeX output")
+    parser.add_argument("--lsodac", action="store_true", dest="lsodac", default=True, help="generate LSODA C output (default)")
+    parser.add_argument("--name", type=str, dest="name", default="simulation", help="output name")
+    parser.add_argument("--octave", action="store_true", dest="octave", default=False, help="generate GNU Octave output")
+    parser.add_argument("--run", action="store_true", dest="run", default=False, help="run the simulation")
+    parser.add_argument("--scipy", action="store_true", dest="scipy", default=False, help="generate SciPy output")
+    parser.add_argument("--verbose", action="store_true", dest="verbose", default=False, help="be verbose")
+    parser.add_argument("inputfile", metavar="FILE", type=str, help="input file name")
 
     return parser
 
