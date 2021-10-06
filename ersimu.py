@@ -422,9 +422,9 @@ def latex_sub(ers, s, eq=True):
     for j in ers.latex:
         if s == j:
             if eq:
-                return latex[j]
+                return ers.latex[j]
             else:
-                return "$" + latex[j] + "$"
+                return "$" + ers.latex[j] + "$"
 
     return s
 
@@ -482,7 +482,7 @@ def latex_reaction_fmt(ers, s):
                 
         for j in ers.latex:
             if i == j:
-                x = "$\\mathrm{%s}$" % latex[j]
+                x = "$\\mathrm{%s}$" % ers.latex[j]
                 if n > 1:
                     res.append(str(n) + " " + x)
                 else:
@@ -1172,7 +1172,7 @@ def main(argv):
         i += 1
 
     for ltx in ers.latex:
-        dbg("LATEX %s = %s" % (ltx, latex[ltx]))
+        dbg("LATEX %s = %s" % (ltx, ers.latex[ltx]))
 
     if opts.scipy:
         scipy_output(ers, opts.name)
