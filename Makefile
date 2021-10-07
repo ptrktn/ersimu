@@ -59,8 +59,10 @@ test-octave:
 	test -f simulation.dat
 	./xplot.sh -N test simulation.dat
 
-lsoda: lsoda.c ersimu.h
-	$(CC) $(CFLAGS) $(LSODACFLAGS) -o lsoda lsoda.c -lm
+lsoda: lsoda.c ersimu.c
+	cat lsoda.c ersimu.c > tmp.c
+	$(CC) $(CFLAGS) $(LSODACFLAGS) -o lsoda tmp.c -lm
+	unlink tmp.c
 
 .PHONY: test-lsodac
 test-lsodac:

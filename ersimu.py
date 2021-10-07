@@ -805,7 +805,7 @@ def latex_output(ers, fbase, src):
 
 
 def lsoda_c_output(ers, fbase):
-    fname = "%s.h" % fbase
+    fname = "%s.c" % fbase
     n = len(ers.reactions)
     neq = len(ers.xdot_raw)
     
@@ -855,21 +855,20 @@ def lsoda_c_output(ers, fbase):
                 fp.write("#define %s (%s)\n" % (a, ers.constants[a]))
 
         fp.write("\n#define NEQ %d\n" % neq)
+        fp.write("static int get_neq(void) { return NEQ; }\n")
         fp.write("#define N_REACTIONS %d\n" % n)
         fp.write("#define T_END %s\n" % ers.simulation["T_END"])
         fp.write("#define T_DELTA (1/ (double) %s)\n" % ers.simulation["T_POINTS"])
         fp.write("#define LSODE_ATOL %s\n" % ers.lsode_atol)
         fp.write("#define LSODE_RTOL %s\n" % ers.lsode_rtol)
-        if "MAXIMUM_STEP_SIZE" in ers.simulation:
-            fp.write("#define LSODE_HMAX %s\n" %
-                     ers.simulation["MAXIMUM_STEP_SIZE"])
-        if "INITIAL_STEP_SIZE" in ers.simulation:
-            fp.write("#define LSODE_H0 %s\n" %
-                     ers.simulation["INITIAL_STEP_SIZE"])
+        fp.write("#define LSODE_HMAX %s\n" %
+                 ers.simulation.get("MAXIMUM_STEP_SIZE", "0.0"))
+        fp.write("#define LSODE_H0 %s\n" %
+                 ers.simulation.get("INITIAL_STEP_SIZE", "0.0"))
 
         fp.write("\nstatic double kf[N_REACTIONS+1], kr[N_REACTIONS+1];\n")
-        
-        fp.write("\nstatic void erhelper_init(double *x, double *abstol, double *reltol)\n{\n")
+
+        fp.write("\nstatic void ersimu_init(double *x, double *abstol, double *reltol, double *t_end, double *dt, double *h0, double *hmax)\n{\n")
 
         i = 0
         while i <= neq:
@@ -892,8 +891,10 @@ def lsoda_c_output(ers, fbase):
         for r in ers.reactions:
             if r.rates[1]:
                 fp.write("\tkr(%d) = %s ;\n" % (r.i, r.kr))
-                
-        fp.write("\n}\n")
+
+        fp.write("\n\t*t_end = T_END;\n\t*dt = T_DELTA;\n"
+                 "\t*h0 = LSODE_H0;\n\t*hmax = LSODE_HMAX;\n"
+                 "\n}\n")
                 
         fp.write("\nstatic void fex(double t, double *x, double *xdot, void *data)\n{\n")
 
@@ -908,9 +909,7 @@ def lsoda_c_output(ers, fbase):
             fp.write("\txdot(%d) = %s ; \n" % (i + 1, ers.xdot_raw[i]))
             i += 1
 
-        fp.write("\n}\n")
-
-        fp.write("\n#endif\n")
+        fp.write("\n}\n\n#endif\n")
 
     except:
         raise
