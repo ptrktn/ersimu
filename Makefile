@@ -1,12 +1,12 @@
 OCTAVE = octave
 SHELL = bash
 
-# additional compiler flags
-CFLAGS += -O3
-
 # silence certain warnings in lsoda.c
-LSODACFLAGS=-Wno-maybe-uninitialized -Wno-unused-but-set-variable \
+LSODACFLAGS = -Wno-maybe-uninitialized -Wno-unused-but-set-variable \
 	-Wno-unused-variable
+
+# additional compiler flags
+CFLAGS += -O3 $(LSODACFLAGS)
 
 .PHONY: test
 test:
@@ -59,22 +59,22 @@ test-octave:
 	test -f simulation.dat
 	./xplot.sh -N test simulation.dat
 
-lsoda: lsoda.c ersimu.c
-	cat lsoda.c ersimu.c > tmp.c
-	$(CC) $(CFLAGS) $(LSODACFLAGS) -o lsoda tmp.c -lm
-	unlink tmp.c
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
+
+simulation: simulation.o
+	$(CC) $? -o $@ -lm
 
 .PHONY: test-lsodac
 test-lsodac:
-	rm -f ersimu.h ersimu.mat
 	./ersimu.py examples/brusselator.txt
-	$(MAKE) lsoda
-	./lsoda test.dat
+	$(MAKE) simulation
+	./simulation test.dat
 	./xplot.sh -N test test.dat
 
 .PHONY: clean
 clean:
-	rm -f core *~ *.BAK octave-workspace *.jpg *.mat *.m *.h *.pdf lsoda
+	rm -f core *~ *.o *.BAK *.dat *.m ersimu.c *.pdf simulation
 
 .PHONY: dep
 dep:

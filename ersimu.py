@@ -808,10 +808,13 @@ def lsoda_c_output(ers, fbase):
     fname = "%s.c" % fbase
     n = len(ers.reactions)
     neq = len(ers.xdot_raw)
+
+    with open("lsoda.c") as fp:
+        lsodac = fp.read()
     
     try:
         fp = open(fname, "w")
-
+        fp.write(lsodac)
         fp.write("#ifndef __ERHELPER_H__\n#define __ERHELPER_H__\n\n/*\n")
         
         sx = 0
@@ -855,7 +858,6 @@ def lsoda_c_output(ers, fbase):
                 fp.write("#define %s (%s)\n" % (a, ers.constants[a]))
 
         fp.write("\n#define NEQ %d\n" % neq)
-        fp.write("static int get_neq(void) { return NEQ; }\n")
         fp.write("#define N_REACTIONS %d\n" % n)
         fp.write("#define T_END %s\n" % ers.simulation["T_END"])
         fp.write("#define T_DELTA (1/ (double) %s)\n" % ers.simulation["T_POINTS"])
@@ -867,8 +869,8 @@ def lsoda_c_output(ers, fbase):
                  ers.simulation.get("INITIAL_STEP_SIZE", "0.0"))
 
         fp.write("\nstatic double kf[N_REACTIONS+1], kr[N_REACTIONS+1];\n")
-
-        fp.write("\nstatic void ersimu_init(double *x, double *abstol, double *reltol, double *t_end, double *dt, double *h0, double *hmax)\n{\n")
+        fp.write("int get_neq(void) { return NEQ; }\n")
+        fp.write("\nvoid ersimu_init(double *x, double *abstol, double *reltol, double *t_end, double *dt, double *h0, double *hmax)\n{\n")
 
         i = 0
         while i <= neq:
@@ -896,7 +898,7 @@ def lsoda_c_output(ers, fbase):
                  "\t*h0 = LSODE_H0;\n\t*hmax = LSODE_HMAX;\n"
                  "\n}\n")
                 
-        fp.write("\nstatic void fex(double t, double *x, double *xdot, void *data)\n{\n")
+        fp.write("\nvoid fex(double t, double *x, double *xdot, void *data)\n{\n")
 
         for i in ers.kinet_keys:
             fp.write("\tdouble %s = %s ;\n" % (i, ers.kinet[i]))
@@ -1133,7 +1135,7 @@ def main(argv):
         if not(config["has_sympy"]):
             err("sympy is not available")
 
-    if "ersimu" == opts.name:
+    if "ersimu" == opts.name or "lsoda" == opts.name:
         err("bad name")
     elif "-" in opts.name:
         err("name can not contain dashes")
@@ -1141,6 +1143,7 @@ def main(argv):
     config["verbose"] = opts.verbose
     config["octave"] = opts.octave
     config["latex"] = opts.latex
+    config["name"] = opts.name
     fname = opts.inputfile
 
     ers = ERSimu()
@@ -1183,7 +1186,7 @@ def main(argv):
     elif opts.latex:
         latex_output(ers, opts.name, fname)
     else:
-        lsoda_c_output(ers, "ersimu")
+        lsoda_c_output(ers, opts.name)
 
 
 if "__main__" == __name__:
