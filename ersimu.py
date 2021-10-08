@@ -26,6 +26,7 @@ except ImportError:
 import re
 import os
 import errno
+import time
 
 config["verbose"] = False
 config["octave"] = False
@@ -838,7 +839,7 @@ def lsoda_c_output(ers, fbase):
 
     with open(lsoda_c_path()) as fp:
         lsodac = fp.read()
-    
+
     try:
         fp = open(fname, "w")
         fp.write(lsodac)
@@ -950,6 +951,7 @@ def lsoda_c_output(ers, fbase):
     except:
         pass
 
+    return os.path.realpath(fname)
 
 def octave_output(ers, fbase):
     fname = "%s.m" % fbase
@@ -1155,6 +1157,45 @@ def validate_input():
             raise Exception("Missing SIMULATIONS parameter: %s" % p)
 
 
+def compile_run_c(ers, path, name, cleanup=True):
+    """Compile and run the simulation, returning the data file path."""
+    dbg(f"compile {path} name {name}")
+    exe = os.path.realpath(os.path.join(".", name))
+    dat = os.path.realpath(os.path.join(".", f"{name}.dat"))
+    log = os.path.realpath(os.path.join(".", f"{name}.log"))
+
+    for fname in [exe, dat, log]:
+        if os.path.isfile(fname):
+            dbg(f"removing {fname}")
+            os.unlink(fname)
+
+    # compile
+    cmd = ("cc -O3 -Wno-maybe-uninitialized -Wno-unused-but-set-variable "
+           f"-Wno-unused-variable '{path}' -o '{exe}' -lm")
+    dbg(cmd)
+    if 0 != os.system(cmd) or not(os.path.isfile(exe)):
+        dbg("compile failed")
+        return None
+
+    # run
+    cmd = f"{exe} {dat} > {log} 2>&1"
+    dbg(cmd)
+    t_start = time.time()
+    if 0 != os.system(cmd) and not(os.path.isfile(dat)):
+        dbg("run failed")
+        return None
+    t_end = time.time()
+    dbg(f"run wallclock time was {t_end - t_start} seconds")
+
+    if cleanup:
+        for fname in [exe, log]:
+            if os.path.isfile(fname):
+                dbg(f"cleanup {fname}")
+                os.unlink(fname)
+
+    return dat
+
+
 def main(argv):
     opts = get_arg_parser().parse_args()
 
@@ -1213,7 +1254,10 @@ def main(argv):
     elif opts.latex:
         latex_output(ers, opts.name, fname)
     else:
-        lsoda_c_output(ers, opts.name)
+        path = lsoda_c_output(ers, opts.name)
+        if opts.run:
+            dat = compile_run_c(ers, path, opts.name)
+            dbg(dat)
 
 
 if "__main__" == __name__:
