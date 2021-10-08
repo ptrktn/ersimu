@@ -1,4 +1,4 @@
-OCTAVE = octave
+OCTAVE = octave -q --no-gui
 SHELL = bash
 
 # silence certain warnings in lsoda.c
@@ -18,7 +18,7 @@ test-all: test-parse test-lsodac test-scipy test-octave
 .PHONY: test-parse
 test-parse:
 	for i in `find examples -type f | sort` ; do \
-      rm -f ersimu.h simulation.m simulation.py simulation.tex ; \
+      rm -f simulation.c simulation.m simulation.py simulation.tex ; \
       for opt in --lsodac --octave --scipy --latex ; do \
           echo Parse $$i option $$opt ; \
           ./ersimu.py $$opt $$i || exit 1 ; \
@@ -30,7 +30,7 @@ test-parse:
       done ; \
       pdflatex $$name.tex > /dev/null 2>&1 || exit 1 ; \
       pdflatex $$name.tex > /dev/null 2>&1 || exit 1 ; \
-      test -f ersimu.h || exit 1 ; \
+      test -f simulation.c || exit 1 ; \
       test -f simulation.m || exit 1 ; \
       test -f simulation.py || exit 1 ; \
       test -f simulation.tex || exit 1 ; \
