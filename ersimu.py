@@ -25,7 +25,7 @@ except ImportError:
 
 import re
 import os
-import getopt
+import errno
 
 config["verbose"] = False
 config["octave"] = False
@@ -824,7 +824,9 @@ def lsoda_c_path():
             path = None
 
     if path is None:
-        raise Exception("file lsoda.c not found (%s)" % ", ".join(dirlist))
+        filelist = [os.path.join(f, "lsoda.c") for f in dirlist]
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+            filelist)
 
     return path
 
