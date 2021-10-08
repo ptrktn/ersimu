@@ -43,13 +43,6 @@ test-scipy:
 	./ersimu.py --verbose --scipy --name test --run examples/oregonator.txt
 	test -f test.pdf
 
-.PHONY: test-2
-test-2:
-	rm -f ersimu.mat ersimu.m ersimu_scipy.py ersimu.pdf
-	./ersimu.py -v examples/szalai-koros-chd.txt
-	./ersimu_scipy.py
-	test -f ersimu.pdf
-
 .PHONY: test-octave
 test-octave:
 	rm -f simulation.dat simulation.m
@@ -72,9 +65,15 @@ test-lsodac:
 	./simulation test.dat
 	./xplot.sh -N test test.dat
 
+.PHONY: install
+install:
+	install -m 755 -d $(HOME)/.local/bin $(HOME)/.local/share/ersimu
+	install -m 755 ersimu.py xplot.sh $(HOME)/.local/bin
+	install -m 644 lsoda.c $(HOME)/.local/share/ersimu
+
 .PHONY: clean
 clean:
-	rm -f core *~ *.o *.BAK *.dat *.m ersimu.c *.pdf simulation
+	rm -f core *~ *.o *.BAK *.dat *.m ersimu.c *.pdf simulation simulation.py
 
 .PHONY: dep
 dep:
@@ -83,5 +82,4 @@ dep:
 .PHONY: install-platform
 install-platform:
 	sudo apt install build-essential gnuplot python3 python3-pip \
-         texlive-latex-base texlive-latex-extra \
-         octave octave-doc
+         texlive-latex-base texlive-latex-extra octave octave-doc

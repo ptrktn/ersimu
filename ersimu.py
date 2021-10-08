@@ -803,13 +803,38 @@ def latex_output(ers, fbase, src):
     except:
         pass
 
+def lsoda_c_path():
+    """Locate file lsoda.c"""
+    path = None
+    dirlist = [os.path.realpath(os.path.dirname(__file__))]
+    if os.getenv("HOME"):
+        d = os.path.join(os.getenv("HOME"), ".local", "share", "ersimu")
+        if os.path.isdir(d):
+            dirlist.append(d)
+    d = "/usr/local/share/ersimu"
+    if os.path.isdir(d):
+        dirlist.append(d)
+
+    for dirname in dirlist:
+        path = os.path.join(dirname, "lsoda.c")
+        if os.path.isfile(path):
+            dbg(f"LSODA found in {path}")
+            break
+        else:
+            path = None
+
+    if path is None:
+        raise Exception("file lsoda.c not found (%s)" % ", ".join(dirlist))
+
+    return path
+
 
 def lsoda_c_output(ers, fbase):
     fname = "%s.c" % fbase
     n = len(ers.reactions)
     neq = len(ers.xdot_raw)
 
-    with open("lsoda.c") as fp:
+    with open(lsoda_c_path()) as fp:
         lsodac = fp.read()
     
     try:
