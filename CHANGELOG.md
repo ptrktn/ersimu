@@ -1,6 +1,10 @@
 ## [Unreleased]
 ### Changed
 - New class ERSimu to encapsulate system parameters and model loading.
+- Simplified LaTeX output.
+
+### Added
+- Added option --run.
 
 ## [0.0.1] - 2021-10-04
 ### Start
