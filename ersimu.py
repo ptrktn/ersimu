@@ -523,6 +523,11 @@ def eqnarray_rhs(s, label):
 
     return " ".join(r)
 
+
+def latex_exp(s):
+    return re.sub(r'E([\+\-.]*\d{1,})', r'$\\times 10^{\1}$ ', str(s))
+
+
 # FIXME unit to separate function
 # Reaction rate coefficient formatter
 def latex_rc(s, a):
@@ -642,42 +647,30 @@ def latex_output(ers, fbase, src):
              "\\usepackage{adjustbox}\n"
              "\\usepackage{graphicx}\n"
              "\\usepackage[margin=0.75in]{geometry}\n"
+             "\\usepackage{hyperref}\n"
              "\\begin{document}\n"
-             "\\title{%s}\n"
-             "\\date{\\today}\n"
-             "\\author{%s}\n"
-             "\\maketitle\n\n" % (ers.title, ers.author))
-             
-    fp.write("\\section{Abstract}\n"
-             "\\IfFileExists{abstract.tex}{\n\\input{abstract}\n}{\n"
              "Results from simulations of a %d--reaction, %d--species\n"
-             "chemical reaction system model are reported.\n}\n\n"
+             "chemical reaction system model are reported.\n"
              % (n, neq))
 
-    fp.write("\\section{Introduction}\n\n"
-             "\\IfFileExists{introduction.tex}{\n\\input{introduction}"
-             "\n}{\n%%%% Tabula rasa\n}\n\n")
-
-    fp.write("\\section{Results}\n\n"
-             "\\IfFileExists{results.tex}{\n\\input{results}"
-             "\n}{\n"
-             "The %d reaction system model in Table~\\ref{table:reactions}\n"
-             "was converted to ordinary differential equations programmatically.\n"
-             "Then the resulting %d ordinary differention equations were\n"
-             "integrated by LSODA, which can handle both non--stiff\n"
+    # FIXME Octave/Scipy
+    fp.write("The %d reaction system model given in Table~\\ref{table:reactions}\n"
+             "was converted to ordinary differential equations programmatically~\\cite{ersimu}.\n"
+             "The resulting %d ordinary differention equations (ODE) were\n"
+             "integrated by LSODA (FIXME Octave), which can handle both non--stiff\n"
              "and stiff initial value problems~\\cite{lsoda}.\n"
              "Numerical parameters were: relative tolerance %s,\n"
              "absolute tolerance %s and maximum allowed time step %s.\n"
-             "\n}\n\n" % (n, neq, ers.lsode_rtol, ers.lsode_atol,
+             "\n" % (n, neq, latex_exp(ers.lsode_rtol), latex_exp(ers.lsode_atol),
                           ers.simulation.get("MAXIMUM_STEP_SIZE", "unlimited")))
-    
+
     sx = 0
     for r in ers.reactions:
         if len(r.text) > sx:
             sx = len(r.text)
 
     # Elementary reaction table
-    fp.write("\\begin{table}\n\\label{table:reactions}\n"
+    fp.write("\\begin{table}\n"
              "\\begin{adjustbox}{width=\\textwidth}\n"
              "\\begin{tabular}{lrclll}\n")
 
@@ -738,9 +731,7 @@ def latex_output(ers, fbase, src):
             c.append("%s = %s" % (latex_sub(ers, a, False), ers.constants[a]))
         fp.write("Constants: %s." % ", ".join(c))
         
-    fp.write("}\n"
-             "\\label{tab1e:reactions}\n"
-             "\\end{table}\n\n")
+    fp.write("}\n\\label{table:reactions}\n\\end{table}\n\n")
 
     fp.write("\\begin{eqnarray}\n")
 
@@ -758,22 +749,18 @@ def latex_output(ers, fbase, src):
         i += 1
     
     fp.write("\\end{eqnarray}\n\n")
-    
-    fp.write("\\section{Conclusions}\n\n"
-             "\\IfFileExists{conclusions.tex}{\n\\input{conclusions}"
-             "\n}{\n%%%% Tabula rasa\n}\n\n")
 
-    fp.write("\\section{Acknowledgments}\n\n"
-             "\\IfFileExists{acknowledgments.tex}{\n\\input{acknowledgments}"
-             "\n}{\n%%%% Tabula rasa\n}\n\n")
+    if False:
+        # FIXME
+        fp.write("\\section{Keywords}\n\n")
+        if len(ers.keywords):
+            fp.write(", ".join(ers.keywords))
+            fp.write("\n\n")
 
-    fp.write("\\section{Keywords}\n\n")
-    if len(ers.keywords):
-        fp.write(", ".join(ers.keywords))
-    fp.write("\n\n")
+    fp.write("\\begin{thebibliography}{ersimu}\n"
+             "\\bibitem{lsoda} A.C. Hindmarsh, {\\em ODEPACK, A Systematized Collection of ODE Solvers}, in {\\em Scientific Computing}, R.S. Stepleman et al. (Eds.), North--Holland, Amsterdam, {\\bf 1983}, pp. 55-64.\n"
+             "\\bibitem{ersimu} \\url{https://github.com/ptrktn/ersimu}\n")
 
-    fp.write("\\begin{thebibliography}{99}\n"
-             "\\bibitem{lsoda} A.C. Hindmarsh, {\\em ODEPACK, A Systematized Collection of ODE Solvers}, in {\\em Scientific Computing}, R.S. Stepleman et al. (Eds.), North--Holland, Amsterdam, {\\bf 1983}, pp. 55-64.\n")
     for i in ers.bibitem:
         fp.write("\\bibitem{%s} %s\n"
                  % (i.split()[0], " ".join(i.split()[1:])))
@@ -803,6 +790,9 @@ def latex_output(ers, fbase, src):
         os.chmod(fname, 0o644)
     except:
         pass
+
+    return os.path.realpath(fname)
+
 
 def lsoda_c_path():
     """Locate file lsoda.c"""
@@ -1252,7 +1242,14 @@ def main(argv):
     elif opts.octave:
         octave_output(ers, opts.name)
     elif opts.latex:
-        latex_output(ers, opts.name, fname)
+        fname = latex_output(ers, opts.name, fname)
+        if opts.run:
+            cmd = f"pdflatex '{fname}' > /dev/null 2>&1"
+            dbg(cmd)
+            for _ in range(2):
+                if 0 != os.system(cmd):
+                    dbg("pdflatex failed")
+                    break
     else:
         path = lsoda_c_output(ers, opts.name)
         if opts.run:
