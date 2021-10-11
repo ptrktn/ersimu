@@ -179,8 +179,8 @@ class ERSimu:
         self.kr = {}
         self.kinet = {}
         self.kinet_keys = []
-        self.lsode_atol = "1E-6"
-        self.lsode_rtol = "1E-6"
+        self.lsode_atol = "1.49012E-08"
+        self.lsode_rtol = "1.49012E-08"
         self.n_reactions = None
         self.n_equations = None
 
