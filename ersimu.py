@@ -56,7 +56,7 @@ def get_arg_parser():
     parser.add_argument("--name", type=str, dest="name", default="simulation", help="output name")
     parser.add_argument("--octave", action="store_true", dest="octave", default=False, help="generate GNU Octave output")
     parser.add_argument("--run", action="store_true", dest="run", default=False, help="run the simulation")
-    parser.add_argument("--scipy", action="store_true", dest="scipy", default=False, help="generate SciPy output")
+    parser.add_argument("--scipy", action="store_true", dest="scipy", default=False, help="generate SciPy output (experimental and not fully implemented)")
     parser.add_argument("--verbose", action="store_true", dest="verbose", default=False, help="be verbose")
     parser.add_argument("inputfile", metavar="FILE", type=str, help="input file name")
 
@@ -956,8 +956,15 @@ def octave_output(ers, fbase):
 
         dump_model_in_comments(ers, fp, "#")
 
-        fp.write("more off\n")
-        fp.write("global kf kr ;\n")
+        fp.write("\n# Command-line argument specifying the output file is mandatory\n"
+                 "arg_list = argv();\n"
+                 "if (1 == nargin)\n"
+                 "    datfile = arg_list{1};\n"
+                 "else\n"
+                 "    quit(1);\n"
+                 "endif\n\n"
+                 "more off\n"
+                 "global kf kr ;\n")
 
         if len(ers.excess):
             fp.write("\n# Species in excess\nglobal %s ;\n" % " ".join(ers.excess))
@@ -1034,6 +1041,8 @@ def octave_output(ers, fbase):
         os.chmod(fname, 0o755)
     except:
         pass
+
+    return os.path.realpath(fname)
 
 
 def dump_model_in_comments(ers, fp, comment_string="#"):
@@ -1147,8 +1156,41 @@ def validate_input():
             raise Exception("Missing SIMULATIONS parameter: %s" % p)
 
 
+def run_octave(ers, path, name, cleanup=True):
+    """Compile and run the Octave simulation, returning the data file path."""
+    dbg(f"run {path} name {name}")
+    exe = path # e.g. simulation.m
+    dat = os.path.realpath(os.path.join(".", f"{name}.dat"))
+    log = os.path.realpath(os.path.join(".", f"{name}.log"))
+
+    for fname in [dat, log]:
+        if os.path.isfile(fname):
+            dbg(f"removing {fname}")
+            os.unlink(fname)
+
+    # run
+    cmd = f"{exe} {dat} > {log} 2>&1"
+    dbg(cmd)
+    t_start = time.time()
+    if 0 != os.system(cmd) and not(os.path.isfile(dat)):
+        dbg("run failed")
+        return None
+    t_end = time.time()
+    dbg(f"run wallclock time was {t_end - t_start} seconds")
+
+    if cleanup:
+        for fname in [log]:
+            if os.path.isfile(fname):
+                dbg(f"cleanup {fname}")
+                os.unlink(fname)
+
+    dbg("output file is {dat}")
+
+    return dat
+
+
 def compile_run_c(ers, path, name, cleanup=True):
-    """Compile and run the simulation, returning the data file path."""
+    """Compile and run the C simulation, returning the data file path."""
     dbg(f"compile {path} name {name}")
     exe = os.path.realpath(os.path.join(".", name))
     dat = os.path.realpath(os.path.join(".", f"{name}.dat"))
@@ -1182,6 +1224,8 @@ def compile_run_c(ers, path, name, cleanup=True):
             if os.path.isfile(fname):
                 dbg(f"cleanup {fname}")
                 os.unlink(fname)
+
+    dbg("output file is {dat}")
 
     return dat
 
@@ -1240,11 +1284,13 @@ def main(argv):
         if opts.run:
             exec(f"import {opts.name}")
     elif opts.octave:
-        octave_output(ers, opts.name)
-    elif opts.latex:
-        fname = latex_output(ers, opts.name, fname)
+        path = octave_output(ers, opts.name)
         if opts.run:
-            cmd = f"pdflatex '{fname}' > /dev/null 2>&1"
+            dat = run_octave(ers, path, opts.name)
+    elif opts.latex:
+        path = latex_output(ers, opts.name, fname)
+        if opts.run:
+            cmd = f"pdflatex '{path}' > /dev/null 2>&1"
             dbg(cmd)
             for _ in range(2):
                 if 0 != os.system(cmd):
