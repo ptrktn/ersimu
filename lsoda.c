@@ -2976,6 +2976,8 @@ int main(int argc, char **argv)
 	rwork6 = LSODE_HMAX;
 #endif
 
+	t_print(fp, t, y, neq);
+
 	for (iout = 1; ; iout++) {
 		lsoda(fex, neq, y, &t, tout, itol, rtol, atol, itask, &istate, iopt, jt,
 		      iwork1, iwork2, iwork5, iwork6, iwork7, iwork8, iwork9,
@@ -2987,10 +2989,11 @@ int main(int argc, char **argv)
 		}
 
 		tout += dt;
-		
-		if (t > t_end)
+
+		if (tout >= t_end)
 			break;
 	}
+
 	n_lsoda_terminate();
 
 	if (fname)
