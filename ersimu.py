@@ -55,12 +55,14 @@ def get_arg_parser():
     parser.add_argument("--lsodac", action="store_true", dest="lsodac", default=True, help="generate LSODA C output (default)")
     parser.add_argument("--name", type=str, dest="name", default="simulation", help="output name")
     parser.add_argument("--octave", action="store_true", dest="octave", default=False, help="generate GNU Octave output")
+    parser.add_argument("--plot", action="append", dest="plot", help="plot a variable (can be `all' or repeated)")
     parser.add_argument("--run", action="store_true", dest="run", default=False, help="run the simulation")
     parser.add_argument("--scipy", action="store_true", dest="scipy", default=False, help="generate SciPy output (experimental and not fully implemented)")
     parser.add_argument("--verbose", action="store_true", dest="verbose", default=False, help="be verbose")
     parser.add_argument("inputfile", metavar="FILE", type=str, help="input file name")
 
-    return parser
+
+    return parser.parse_args()
 
 
 class R:
@@ -791,7 +793,10 @@ def latex_output(ers, fbase, src):
     except:
         pass
 
-    return os.path.realpath(fname)
+    fname = os.path.realpath(fname)
+    dbg(f"output file is {fname}")
+
+    return fname
 
 
 def lsoda_c_path():
@@ -941,7 +946,11 @@ def lsoda_c_output(ers, fbase):
     except:
         pass
 
-    return os.path.realpath(fname)
+    fname = os.path.realpath(fname)
+    dbg(f"C file is {fname}")
+
+    return fname
+
 
 def octave_output(ers, fbase):
     fname = "%s.m" % fbase
@@ -1042,7 +1051,10 @@ def octave_output(ers, fbase):
     except:
         pass
 
-    return os.path.realpath(fname)
+    fname = os.path.realpath(fname)
+    dbg(f"Octave file is {fname}")
+
+    return fname
 
 
 def dump_model_in_comments(ers, fp, comment_string="#"):
@@ -1184,7 +1196,7 @@ def run_octave(ers, path, name, cleanup=True):
                 dbg(f"cleanup {fname}")
                 os.unlink(fname)
 
-    dbg("output file is {dat}")
+    dbg(f"output file is {dat}")
 
     return dat
 
@@ -1225,13 +1237,39 @@ def compile_run_c(ers, path, name, cleanup=True):
                 dbg(f"cleanup {fname}")
                 os.unlink(fname)
 
-    dbg("output file is {dat}")
+    dbg(f"output file is {dat}")
 
     return dat
 
 
+def plot(ers, dat, xvars, name):
+    """Simple plotting."""
+    # these are imported if required
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    if "all" in xvars:
+        xvars = ers.x
+
+    with open(dat) as fp:
+        data = np.loadtxt(fp, unpack=True)
+    plotfiles = []
+    for var in xvars:
+        i = 1 + ers.x.index(var)
+        fname = f"{name}_{var}.pdf"
+        dbg(f"PLOT {var} ({i}) {fname}")
+        fig, ax = plt.subplots(1, 1, figsize=(15, 8))
+        ax.plot(data[0], data[i])
+        ax.set_ylabel(var)
+        ax.set_xlabel("time")
+        plt.savefig(fname, bbox_inches="tight")
+        plotfiles.append(fname)
+
+    return plotfiles
+
+
 def main(argv):
-    opts = get_arg_parser().parse_args()
+    opts = get_arg_parser()
 
     if opts.latex or opts.octave:
         if not(config["has_sympy"]):
@@ -1279,6 +1317,9 @@ def main(argv):
     for ltx in ers.latex:
         dbg("LATEX %s = %s" % (ltx, ers.latex[ltx]))
 
+    dat = None
+    plotfiles = None
+
     if opts.scipy:
         scipy_output(ers, opts.name)
         if opts.run:
@@ -1300,7 +1341,9 @@ def main(argv):
         path = lsoda_c_output(ers, opts.name)
         if opts.run:
             dat = compile_run_c(ers, path, opts.name)
-            dbg(dat)
+
+    if dat and opts.plot:
+        plotfiles = plot(ers, dat, opts.plot, opts.name)
 
 
 if "__main__" == __name__:
