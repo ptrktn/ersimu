@@ -625,7 +625,7 @@ def latex_vrate(ers, v):
     return r
 
 
-def latex_output(ers, fbase, src):
+def latex_output(ers, fbase, src, octave=False, plotfiles=None):
     from datetime import datetime
 
     fname = "%s.tex" % fbase
@@ -659,14 +659,20 @@ def latex_output(ers, fbase, src):
              f"Results from simulations of a {n}--reaction, {neq}--species\n"
              "chemical reaction system model are reported.\n")
 
-    # FIXME Octave/Scipy
+    if octave:
+        how = "GNU Octave and LSODE"
+        cite = "octave,lsoda"
+    else:
+        how = "LSODA"
+        cite = "lsoda"
+
     fp.write(f"The {n} reaction system model given in "
              "Table~\\ref{table:reactions}\n"
              "was converted to ordinary differential equations (ODE) "
              "programmatically~\\cite{ersimu}.\n"
              f"The resulting system of {neq} ODEs were\n"
-             "integrated by LSODA, which can handle both non--stiff\n"
-             "and stiff initial value problems~\\cite{lsoda}.\n"
+             f"integrated with {how}, which can handle both non--stiff\n"
+             f"and stiff initial value problems~\\cite{{{cite}}}.\n"
              "Numerical parameters were: "
              f"relative tolerance {latex_exp(ers.lsode_rtol)},\n"
              f"absolute tolerance {latex_exp(ers.lsode_rtol)}\n"
@@ -760,6 +766,20 @@ def latex_output(ers, fbase, src):
     
     fp.write("\\end{eqnarray}\n\n")
 
+    if None != plotfiles:
+        for plot in plotfiles:
+            if os.path.isfile(plot):
+                label = os.path.basename(plot).replace("_", "")
+                lpath = os.path.basename(plot).replace("_", "\\_")
+                fp.write("\\begin{figure}\n\\centerline{\\includegraphics"
+                         "[width=0.9\\columnwidth]{"
+                         f"{plot}"
+                         "}}\n\\caption{File "
+                         f"\\texttt{{{lpath}}}.}}\n\\label{{fig:{label}}}\n"
+                         "\\end{figure}\n")
+            else:
+                fp.write(f"%% file {plot} not found\n")
+
     if False:
         # FIXME
         fp.write("\\section{Keywords}\n\n")
@@ -768,12 +788,21 @@ def latex_output(ers, fbase, src):
             fp.write("\n\n")
 
     fp.write("\\begin{thebibliography}{ersimu}\n"
-             "\\bibitem{lsoda} A.C. Hindmarsh, {\\em ODEPACK, A Systematized Collection of ODE Solvers}, in {\\em Scientific Computing}, R.S. Stepleman et al. (Eds.), North--Holland, Amsterdam, {\\bf 1983}, pp. 55-64.\n"
-             "\\bibitem{ersimu} \\url{https://github.com/ptrktn/ersimu}\n")
+             "\\bibitem{ersimu} {\\em ERSimu: A software for exploring chemical kinetics and dynamics in elementary reactions systems}, \\url{https://github.com/ptrktn/ersimu}\n")
+
+    if octave:
+        fp.write("\\bibitem{octave} J.W.~Eaton, D.~Bateman, S.~Hauberg, "
+                 "R.~Wehbring, {\\em GNU Octave version 6.1.0 manual: a "
+                 "high-level interactive language for numerical "
+                 "computations}, {\\bf 2020},\n"
+                 "\\url{https://www.gnu.org/software/octave/doc/v6.1.0/}")
+
+    fp.write("\\bibitem{lsoda} A.C. Hindmarsh, {\\em ODEPACK, A Systematized Collection of ODE Solvers}, in {\\em Scientific Computing}, R.S. Stepleman et al. (Eds.), North--Holland, Amsterdam, {\\bf 1983}, pp. 55-64.\n")
 
     for i in ers.bibitem:
         fp.write("\\bibitem{%s} %s\n"
                  % (i.split()[0], " ".join(i.split()[1:])))
+
     fp.write("\\end{thebibliography}\n\n")
 
     fp.write("\\end{document}\n")
@@ -1336,15 +1365,6 @@ def main(argv):
         path = octave_output(ers, opts.name)
         if opts.run:
             dat = run_octave(ers, path, opts.name)
-    elif opts.latex:
-        path = latex_output(ers, opts.name, fname)
-        if opts.run:
-            cmd = f"pdflatex '{path}' > /dev/null 2>&1"
-            dbg(cmd)
-            for _ in range(2):
-                if 0 != os.system(cmd):
-                    dbg("pdflatex failed")
-                    break
     else:
         path = lsoda_c_output(ers, opts.name)
         if opts.run:
@@ -1352,6 +1372,16 @@ def main(argv):
 
     if dat and opts.plot:
         plotfiles = plot(ers, dat, opts.plot, opts.name)
+
+    if opts.latex:
+        path = latex_output(ers, opts.name, fname, opts.octave, plotfiles)
+        if opts.run:
+            cmd = f"pdflatex '{path}' > /dev/null 2>&1"
+            dbg(cmd)
+            for _ in range(2):
+                if 0 != os.system(cmd):
+                    dbg("pdflatex failed")
+                    break
 
 
 if "__main__" == __name__:

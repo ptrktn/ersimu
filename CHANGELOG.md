@@ -5,6 +5,7 @@
 
 ### Added
 - Added options --run and --plot.
+- Include plots in LaTeX output.
 
 ## [0.0.1] - 2021-10-04
 ### Start
