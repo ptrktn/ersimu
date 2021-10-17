@@ -167,6 +167,7 @@ class ERSimu:
         self.excess = []
         self.xdot = []
         self.xdot_raw = []
+        self.xdot_latex = []
         self.system_species = [] # FIXME dict?
         self.initial = {}
         self.constants = {}
@@ -397,10 +398,8 @@ def proc_r(ers):
             cmd = "df = %s" % symbols(" ".join(a))
             exec(cmd, globals())
             dbg(df)
-            if config["octave"]:
-                ers.xdot.append(subst_x(ers, str(df)))
-            if config["latex"]:
-                ers.xdot.append(str(df))
+            ers.xdot.append(subst_x(ers, str(df)))
+            ers.xdot_latex.append(str(df))
 
 
 def subst_x(ers, e):
@@ -752,7 +751,7 @@ def latex_output(ers, fbase, src, octave=False, plotfiles=None):
     fp.write("\\begin{eqnarray}\n")
 
     i = 0
-    for dx in ers.xdot:
+    for dx in ers.xdot_latex:
         dx = dx_sorted(dx)
         dx = latex_sub2(ers, dx)
         dx = eqnarray_rhs(dx, ers.x[i])
