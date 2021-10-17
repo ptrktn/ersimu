@@ -4,7 +4,7 @@
 - Simplified LaTeX output.
 
 ### Added
-- Added option --run.
+- Added options --run and --plot.
 
 ## [0.0.1] - 2021-10-04
 ### Start
