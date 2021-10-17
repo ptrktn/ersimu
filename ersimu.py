@@ -181,8 +181,8 @@ class ERSimu:
         self.kr = {}
         self.kinet = {}
         self.kinet_keys = []
-        self.lsode_atol = "1.49012E-08"
-        self.lsode_rtol = "1.49012E-08"
+        self.lsode_atol = "1.49012E-8"
+        self.lsode_rtol = "1.49012E-8"
         self.n_reactions = None
         self.n_equations = None
 
@@ -626,6 +626,8 @@ def latex_vrate(ers, v):
 
 
 def latex_output(ers, fbase, src):
+    from datetime import datetime
+
     fname = "%s.tex" % fbase
     n = len(ers.reactions)
     neq = len(ers.xdot_raw)
@@ -651,20 +653,25 @@ def latex_output(ers, fbase, src):
              "\\usepackage[margin=0.75in]{geometry}\n"
              "\\usepackage{hyperref}\n"
              "\\begin{document}\n"
-             "Results from simulations of a %d--reaction, %d--species\n"
-             "chemical reaction system model are reported.\n"
-             % (n, neq))
+             f"\\title{{ {ers.title} }}\n"
+             f"\\date{{ {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')} }}\n"
+             "\\maketitle\n\n\\noindent\n"
+             f"Results from simulations of a {n}--reaction, {neq}--species\n"
+             "chemical reaction system model are reported.\n")
 
     # FIXME Octave/Scipy
-    fp.write("The %d reaction system model given in Table~\\ref{table:reactions}\n"
-             "was converted to ordinary differential equations programmatically~\\cite{ersimu}.\n"
-             "The resulting %d ordinary differention equations (ODE) were\n"
-             "integrated by LSODA (FIXME Octave), which can handle both non--stiff\n"
+    fp.write(f"The {n} reaction system model given in "
+             "Table~\\ref{table:reactions}\n"
+             "was converted to ordinary differential equations (ODE) "
+             "programmatically~\\cite{ersimu}.\n"
+             f"The resulting system of {neq} ODEs were\n"
+             "integrated by LSODA, which can handle both non--stiff\n"
              "and stiff initial value problems~\\cite{lsoda}.\n"
-             "Numerical parameters were: relative tolerance %s,\n"
-             "absolute tolerance %s and maximum allowed time step %s.\n"
-             "\n" % (n, neq, latex_exp(ers.lsode_rtol), latex_exp(ers.lsode_atol),
-                          ers.simulation.get("MAXIMUM_STEP_SIZE", "unlimited")))
+             "Numerical parameters were: "
+             f"relative tolerance {latex_exp(ers.lsode_rtol)},\n"
+             f"absolute tolerance {latex_exp(ers.lsode_rtol)}\n"
+             "and maximum allowed time step "
+             f"{ers.simulation.get('MAXIMUM_STEP_SIZE', 'unlimited')}.\n")
 
     sx = 0
     for r in ers.reactions:
@@ -672,7 +679,8 @@ def latex_output(ers, fbase, src):
             sx = len(r.text)
 
     # Elementary reaction table
-    fp.write("\\begin{table}\n"
+    fp.write("%% {width=\\textwidth} may be removed\n"
+             "\\begin{table}\n"
              "\\begin{adjustbox}{width=\\textwidth}\n"
              "\\begin{tabular}{lrclll}\n")
 
