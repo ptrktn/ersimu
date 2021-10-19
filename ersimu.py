@@ -743,9 +743,21 @@ def latex_output(ers, fbase, src, octave=False, plotfiles=None):
     if len(ers.constants):
         c = []
         for a in ers.constants:
-            c.append("%s = %s" % (latex_sub(ers, a, False), ers.constants[a]))
-        fp.write("Constants: %s." % ", ".join(c))
+            c.append("%s = %s" % (latex_sub(ers, a, False),
+                                  latex_exp(ers.constants[a])))
+        fp.write("Constants: %s.\n" % ", ".join(c))
+
+    if len(ers.excess):
+        fp.write("Species in excess: %s.\n" % ", ".join(ers.excess))
         
+    if len(ers.initial):
+        c = []
+        for a in ers.initial:
+            if a in ers.initial:
+                c.append("[%s]$_0$ = %s" % (latex_sub(ers, a, False),
+                                            latex_exp(ers.initial[a])))
+        fp.write("Initial conditions: %s.\n" % ", ".join(c))
+
     fp.write("}\n\\label{table:reactions}\n\\end{table}\n\n")
 
     fp.write("\\begin{eqnarray}\n")
@@ -814,13 +826,6 @@ def latex_output(ers, fbase, src, octave=False, plotfiles=None):
         i += 1
 
     fp.write("\n")
-
-    if len(ers.excess):
-        fp.write("%%%% Species in excess: %s\n" % " ".join(ers.excess))
-        for a in ers.excess:
-            if ers.initial.get(a):
-                fp.write("%%%% #define %s (%s)\n" % (a, ers.initial[a]))
-        fp.write("\n")
 
     fp.close()
 
