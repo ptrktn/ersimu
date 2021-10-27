@@ -4,8 +4,9 @@
 - Simplified LaTeX output.
 
 ### Added
-- Added options --run and --plot.
+- Options --run and --plot.
 - Include plots in LaTeX output.
+- Symbolically computed Jacobian function in Octave solver.
 
 ## [0.0.1] - 2021-10-04
 ### Start
