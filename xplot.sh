@@ -136,7 +136,7 @@ xplot() {
 }
 
 if [ 0 -eq $sopt ] ; then
-	maxjobs=$(nproc)
+	maxjobs=$(( 1 + $(nproc) ))
 	(( maxjobs-- ))
 else
 	maxjobs=1
@@ -159,10 +159,15 @@ for i in $(seq 2 $NCOLS) ; do
 	fi
 
 	if [ 1 -eq $plot ] ; then
-	    xplot $FNAME $i ${title[$j]} &
-	    while [ $(jobs -r | wc -l) -gt $maxjobs ] ; do
-		sleep 10
-	    done
+		if [ 1 -eq $maxjobs ] ; then
+			xplot $FNAME $i ${title[$j]}
+		else
+			xplot $FNAME $i ${title[$j]} &
+			echo JOBS $(jobs -r | wc -l)
+			while [ $(jobs -r | wc -l) -ge $maxjobs ] ; do
+				sleep 1
+			done
+		fi
 	fi
 
 done
