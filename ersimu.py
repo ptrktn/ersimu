@@ -168,6 +168,7 @@ class ERSimu:
         self.xdot = []
         self.xdot_raw = []
         self.xdot_latex = []
+        self.xdot_symbols = []
         self.system_species = [] # FIXME dict?
         self.initial = {}
         self.constants = {}
@@ -278,9 +279,6 @@ class ERSimu:
                 i = s.strip()
                 if not(i in self.system_species):
                     self.system_species.append(i)
-    
-        self.n_reactions = len(self.reactions)
-        self.n_equations = len(self.xdot_raw)
 
 
 def xsmc(r, x):
@@ -398,8 +396,13 @@ def proc_r(ers):
             cmd = "df = %s" % symbols(" ".join(a))
             exec(cmd, globals())
             dbg(df)
-            ers.xdot.append(subst_x(ers, str(df)))
+            xdot = subst_x(ers, str(df))
+            ers.xdot.append(xdot)
+            ers.xdot_symbols.append(subst_x2(ers, xdot))
             ers.xdot_latex.append(str(df))
+
+    ers.n_reactions = len(ers.reactions)
+    ers.n_equations = len(ers.xdot_raw)
 
 
 def subst_x(ers, e):
@@ -419,6 +422,18 @@ def subst_x(ers, e):
     e = re.sub(r'__(k[f,r])(\d+)__', r' \1(\2) ', e)
 
     return " ".join(e.split())
+
+
+def sym2m(e):
+    r = re.sub(r'(k[f,r])(\d+)', r' \1(\2) ', str(e))
+    r = re.sub(r'(x)(\d+)', r' \1(\2) ', r)
+    return r
+
+
+def subst_x2(ers, e):
+    r = re.sub(r'(k[f,r])\((\d+)\)', r' \1\2 ', e)
+    r = re.sub(r'(x)\((\d+)\)', r' \1\2 ', r)
+    return r
 
 
 def latex_sub(ers, s, eq=True):
@@ -678,6 +693,14 @@ def latex_output(ers, fbase, src, octave=False, plotfiles=None):
              "and maximum allowed time step "
              f"{ers.simulation.get('MAXIMUM_STEP_SIZE', 'unlimited')}.\n")
 
+    if len(ers.initial):
+        c = []
+        for a in ers.initial:
+            if a in ers.initial:
+                c.append("[%s]$_0$ = %s" % (latex_sub(ers, a, False),
+                                            latex_exp(ers.initial[a])))
+        fp.write("Initial conditions: %s.\n" % ", ".join(c))
+
     sx = 0
     for r in ers.reactions:
         if len(r.text) > sx:
@@ -749,14 +772,6 @@ def latex_output(ers, fbase, src, octave=False, plotfiles=None):
 
     if len(ers.excess):
         fp.write("Species in excess: %s.\n" % ", ".join(ers.excess))
-        
-    if len(ers.initial):
-        c = []
-        for a in ers.initial:
-            if a in ers.initial:
-                c.append("[%s]$_0$ = %s" % (latex_sub(ers, a, False),
-                                            latex_exp(ers.initial[a])))
-        fp.write("Initial conditions: %s.\n" % ", ".join(c))
 
     fp.write("}\n\\label{table:reactions}\n\\end{table}\n\n")
 
@@ -996,7 +1011,8 @@ def lsoda_c_output(ers, fbase):
 def octave_output(ers, fbase):
     fname = "%s.m" % fbase
     mname = "%s.dat" % fbase
-    n = len(ers.reactions)
+    n = ers.n_reactions
+    neq = ers.n_equations
 
     try:
         fp = open(fname, "w")
@@ -1014,7 +1030,7 @@ def octave_output(ers, fbase):
                  "    quit(1);\n"
                  "endif\n\n"
                  "more off\n"
-                 "global kf kr ;\n")
+                 "global kf kr ;\n\nuse_jac = 1;\n")
 
         if len(ers.excess):
             fp.write("\n# Species in excess\nglobal %s ;\n" % " ".join(ers.excess))
@@ -1039,7 +1055,61 @@ def octave_output(ers, fbase):
 
         fp.write("\n# initial conditions\nx0 = zeros(%d, 1) ;\n" % len(ers.xdot))
 
-        # FIXME Jacobian
+        # Jacobian
+        fp.write("function j = jac (x, t)\n"
+                 "    global kf kr ;\n"
+                 f"    j = zeros({neq}, {neq});\n")
+
+        if len(ers.excess):
+            fp.write("    global %s ;\n" % " ".join(ers.excess))
+        if len(ers.constants):
+            fp.write("    global %s ;\n" % " ".join(ers.constants))
+
+        # namespace for sympy operations
+        symbols = {}
+
+        for v in ["fkinet", "rkinet", "kf", "kr"]:
+            for i in range(1, n+1):
+                sym = f"{v}{i}"
+                cmd = f"{sym} = Symbol('{sym}')"
+                exec(cmd, globals(), symbols)
+                sym = f"x{i}"
+                cmd = f"{sym} = Symbol('{sym}')"
+                exec(cmd, globals(), symbols)
+
+        for v in ers.constants:
+            exec(f"{v} = Symbol('{v}')", globals(), symbols)
+
+        for v in ers.excess:
+            exec(f"{v} = Symbol('{v}')", globals(), symbols)
+
+        for j in range(0, neq):
+            i = 1 + j
+            sym = f"xdot{i}"
+            #cmd = f"_z['{sym}'] = Function('{sym}')"
+            #fp.write(f"# {i} {ers.xdot[j]}\n")
+            #fp.write(f"# {i} {ers.xdot_symbols[j]}\n")
+            #exec(cmd)
+            cmd = f"{sym} = {ers.xdot_symbols[j]}"
+            exec(cmd, globals(), symbols)
+
+        # calculate differentials
+        for i in range(1, neq + 1):
+            df_i = f"xdot{i}"
+            for j in range(1, neq + 1):
+                dx_j = f"x{j}"
+                cmd = f"dfdx = diff({df_i}, {dx_j})"
+                fp.write("    # diff(")
+                fp.write(str(symbols[df_i]))
+                fp.write(", ")
+                fp.write(str(symbols[dx_j]))
+                fp.write(")\n")
+                exec(cmd, globals(), symbols)
+                fp.write("    #     = " + str(symbols['dfdx']) + "\n")
+                rhs = sym2m(symbols['dfdx'])
+                fp.write(f"    j({i}, {j}) = {rhs} ;\n")
+
+        fp.write("endfunction\n\n")
 
         for a in ers.x:
             if a in ers.initial:
@@ -1073,7 +1143,11 @@ def octave_output(ers, fbase):
         fp.write("t_points = %s ;\n" % ers.simulation["T_POINTS"])
         fp.write("t = linspace(0, t_end, t_end * t_points) ;\n")
         fp.write("tstart = cputime ;\n")
-        fp.write("  [y, istate, msg] = lsode (\"f\", x0, t) ;\n")
+        fp.write("if 1 == use_jac\n"
+                 "    [y, istate, msg] = lsode ({@f, @jac}, x0, t);\n"
+                 "else\n"
+                 "    [y, istate, msg] = lsode (\"f\", x0, t) ;\n"
+                 "endif\n")
         fp.write("lsode_options\n")
         fp.write("istate\n")
         fp.write("msg\n")
