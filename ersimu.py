@@ -1022,15 +1022,17 @@ def octave_output(ers, fbase):
 
         dump_model_in_comments(ers, fp, "#")
 
-        fp.write("\n# Command-line argument specifying the output file is mandatory\n"
-                 "arg_list = argv();\n"
-                 "if (1 == nargin)\n"
-                 "    datfile = arg_list{1};\n"
-                 "else\n"
-                 "    quit(1);\n"
-                 "endif\n\n"
-                 "more off\n"
-                 "global kf kr ;\n\nuse_jac = 1;\n")
+        fp.write(
+            "more off;\n"
+            "\n# Command-line argument specifying the output file is mandatory\n"
+            "arg_list = argv();\n"
+            "if (1 == nargin)\n"
+            "    datfile = arg_list{1};\n"
+            "else\n"
+            "    quit(1);\n"
+            "endif\n\n"
+            "global kf kr ;\n\nuse_jac = 1;\n"
+        )
 
         if len(ers.excess):
             fp.write("\n# Species in excess\nglobal %s ;\n" % " ".join(ers.excess))
@@ -1054,11 +1056,17 @@ def octave_output(ers, fbase):
                 fp.write("kr(%d) = %s ;\n" % (r.i, r.kr))
 
         fp.write("\n# initial conditions\nx0 = zeros(%d, 1) ;\n" % len(ers.xdot))
+        for a in ers.x:
+            if a in ers.initial:
+                i = 1 + ers.x.index(a)
+                fp.write("# %s\nx0(%d) = %s ;\n" % (a, i, ers.initial[a]))
 
-        # Jacobian
-        fp.write("function j = jac (x, t)\n"
-                 "    global kf kr ;\n"
-                 f"    j = zeros({neq}, {neq});\n")
+        fp.write(
+            "\n# Jacobian\n"
+            "function j = jac (x, t)\n"
+            "    global kf kr ;\n"
+            f"    j = zeros({neq}, {neq});\n"
+        )
 
         if len(ers.excess):
             fp.write("    global %s ;\n" % " ".join(ers.excess))
@@ -1111,10 +1119,6 @@ def octave_output(ers, fbase):
 
         fp.write("endfunction\n\n")
 
-        for a in ers.x:
-            if a in ers.initial:
-                i = 1 + ers.x.index(a)
-                fp.write("# %s\nx0(%d) = %s ;\n" % (a, i, ers.initial[a]))
         fp.write("\nfunction xdot = f (x, t)\n")
         fp.write("    global kf kr ;\n")
 
