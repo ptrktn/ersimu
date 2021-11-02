@@ -1363,25 +1363,56 @@ def compile_run_c(ers, path, name, cleanup=True):
 
 def plot(ers, dat, xvars, name):
     """Simple plotting."""
-    # these are imported if required
-    import matplotlib.pyplot as plt
-    import numpy as np
+
+    gnuplot = False
+    try:
+        # these are imported only if required
+        import matplotlib.pyplot as plt
+        import numpy as np
+    except ModuleNotFoundError:
+        from tempfile import NamedTemporaryFile
+        dbg("Falling back to gnuplot")
+        gnuplot = True
+
+    if gnuplot:
+        assert(0 == os.system('test -x "$(command -v gnuplot)"'))
+    else:
+        with open(dat) as fp:
+            data = np.loadtxt(fp, unpack=True)
 
     if "all" in xvars:
         xvars = ers.x
 
-    with open(dat) as fp:
-        data = np.loadtxt(fp, unpack=True)
     plotfiles = []
     for var in xvars:
         i = 1 + ers.x.index(var)
+        j = i + 1
         fname = f"{name}_{var}.pdf"
         dbg(f"PLOT {var} ({i}) {fname}")
-        fig, ax = plt.subplots(1, 1, figsize=(15, 8))
-        ax.plot(data[0], data[i])
-        ax.set_ylabel(var)
-        ax.set_xlabel("time")
-        plt.savefig(fname, bbox_inches="tight")
+
+        lc = "#1f77b4"
+        if gnuplot:
+            tmp = NamedTemporaryFile(mode="w", delete=False, encoding="utf-8")
+            tmp.write(
+                "set term pdfcairo\n"
+                f"set output '{fname}'\n"
+                "set title ''\n"
+                f"set xlabel 'time'\n"
+                f"set ylabel '[{var}]'\n"
+                f"plot '{dat}' u 1:{j} w l lc'{lc}' title ''\n"
+            )
+            tmp.close()
+            cmd = f"gnuplot {tmp.name}"
+            dbg(cmd)
+            assert(0 == os.system(cmd))
+            os.unlink(tmp.name)
+        else:
+            fig, ax = plt.subplots(1, 1, figsize=(15, 8))
+            ax.plot(data[0], data[i], color=lc)
+            ax.set_ylabel(var)
+            ax.set_xlabel("time")
+            plt.savefig(fname, bbox_inches="tight")
+
         plotfiles.append(fname)
 
     return plotfiles

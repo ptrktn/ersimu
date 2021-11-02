@@ -4,7 +4,7 @@
 - Simplified LaTeX output.
 
 ### Added
-- Options --run and --plot.
+- Options --run and --plot (gnuplot is used as fallback).
 - Include plots in LaTeX output.
 - Symbolically computed Jacobian function in Octave solver.
 
