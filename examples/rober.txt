@@ -1,0 +1,17 @@
+    A ==> B      | 0.04
+B + B ==> C + B  | 3E7
+B + C ==> A + C  | 1E4
+
+INITIAL A 1.0
+SIMULATION T_END 1E4
+SIMULATION T_POINTS 10000
+SIMULATION MAXIMUM_STEP_SIZE 1E-6
+SIMULATION INITIAL_STEP_SIZE 1.1E-18
+SIMULATION ATOL 1.1E-13
+SIMULATION RTOL 1.1E-13
+
+BIBITEM Rob66 H.H.~Robertson, {\em The solution of a set of reaction rate equations}, in {\em Numerical analysis — an introduction}, J.~Walsh (Ed.), London, New York, {\bf 1966}, Academic Press, pp. 178-182.
+
+BIBITEM TestSet \url{https://www.dm.uniba.it/~testset}
+
+
