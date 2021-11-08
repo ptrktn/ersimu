@@ -229,6 +229,10 @@ class ERSimu:
                             self.simulation["MAXIMUM_STEP_SIZE"] = vals[2]
                         elif "INITIAL_STEP_SIZE" == vals[1]:
                             self.simulation["INITIAL_STEP_SIZE"] = vals[2]
+                        elif "ATOL" == vals[1]:
+                            self.lsode_atol = vals[2]
+                        elif "RTOL" == vals[1]:
+                            self.lsode_rtol = vals[2]
                         else:
                             raise Exception("Invalid SIMULATION argument: %s"
                                             % vals[1])
@@ -1262,8 +1266,10 @@ import math
         fp.write(f"fig, ax = plt.subplots({n}, 1, figsize=(15, 8))\n")
         for i in range(n):
             subplot = f"[{i}]" if n > 1 else ""
-            fp.write(f"ax{subplot}.plot(sol.t.T, sol.y[{i}].T)\n"
-                     f"ax{subplot}.set_ylabel('{ers.x[i]}')\n")
+            fp.write(
+                f"ax{subplot}.plot(sol.t.T, sol.y[{i}].T)\n"
+                f"ax{subplot}.set_ylabel('{ers.x[i]}')\n"
+            )
         fp.write(f"plt.show()\nplt.savefig('{fbase}.pdf', bbox_inches='tight')\n")
 
     except:
@@ -1344,7 +1350,7 @@ def compile_run_c(ers, path, name, cleanup=True):
     cmd = f"{exe} {dat} > {log} 2>&1"
     dbg(cmd)
     t_start = time.time()
-    if 0 != os.system(cmd) and not(os.path.isfile(dat)):
+    if 0 != os.system(cmd) or not(os.path.isfile(dat)):
         dbg("run failed")
         return None
     t_end = time.time()
@@ -1411,6 +1417,7 @@ def plot(ers, dat, xvars, name):
             ax.plot(data[0], data[i], color=lc)
             ax.set_ylabel(var)
             ax.set_xlabel("time")
+            ax.set_xscale("log")
             plt.savefig(fname, bbox_inches="tight")
 
         plotfiles.append(fname)
@@ -1488,13 +1495,12 @@ def main(argv):
 
     if opts.latex:
         path = latex_output(ers, opts.name, fname, opts.octave, plotfiles)
-        if opts.run:
-            cmd = f"pdflatex '{path}' > /dev/null 2>&1"
-            dbg(cmd)
-            for _ in range(2):
-                if 0 != os.system(cmd):
-                    dbg("pdflatex failed")
-                    break
+        cmd = f"timeout 1m pdflatex '{path}' > /dev/null 2>&1"
+        dbg(cmd)
+        for _ in range(2):
+            if 0 != os.system(cmd):
+                dbg("pdflatex failed")
+                break
 
 
 if "__main__" == __name__:
