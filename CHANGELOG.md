@@ -2,9 +2,10 @@
 ### Changed
 - New class ERSimu to encapsulate system parameters and model loading.
 - Simplified LaTeX output.
+- Better alignment with LSODA C and Octave output data files.
 
 ### Added
-- Options --run and --plot (gnuplot is used as fallback).
+- Options --run and --plot (gnuplot is used as fallback) and --logscale.
 - Include plots in LaTeX output.
 - Symbolically computed Jacobian function in Octave solver.
 

@@ -55,6 +55,7 @@ def get_arg_parser():
     parser.add_argument("--latex", action="store_true", dest="latex", default=False, help="generate LaTeX output")
     parser.add_argument("--lsodac", action="store_true", dest="lsodac", default=True, help="generate LSODA C output (default)")
     parser.add_argument("--name", type=str, dest="name", default="simulation", help="output name")
+    parser.add_argument("--logscale", type=str, dest="logscale", default=None, help="Plot using log scale for axes (x, y, xy)")
     parser.add_argument("--octave", action="store_true", dest="octave", default=False, help="generate GNU Octave output")
     parser.add_argument("--plot", action="append", dest="plot", help="plot a variable (can be `all' or repeated)")
     parser.add_argument("--run", action="store_true", dest="run", default=False, help="run the simulation")
@@ -1372,8 +1373,9 @@ def compile_run_c(ers, path, name, cleanup=True):
     return dat
 
 
-def plot(ers, dat, xvars, name):
+def plot(ers, dat, xvars, name, logscale):
     """Simple plotting."""
+    dbg(f"plot {dat} {xvars} {name} {logscale}")
 
     gnuplot = False
     try:
@@ -1387,6 +1389,7 @@ def plot(ers, dat, xvars, name):
 
     if gnuplot:
         assert(0 == os.system('test -x "$(command -v gnuplot)"'))
+        setlg = f"set logscale {logscale}" if logscale else "unset logscale"
     else:
         with open(dat) as fp:
             data = np.loadtxt(fp, unpack=True)
@@ -1410,7 +1413,7 @@ def plot(ers, dat, xvars, name):
                 "set title ''\n"
                 f"set xlabel 'time'\n"
                 f"set ylabel '[{var}]'\n"
-                "set logscale x\n"
+                f"{setlg}\n"
                 "set format x \"10^{%L}\"\n"
                 f"plot '{dat}' u 1:{j} w l lc'{lc}' title ''\n"
             )
@@ -1424,7 +1427,10 @@ def plot(ers, dat, xvars, name):
             ax.plot(data[0], data[i], color=lc)
             ax.set_ylabel(var)
             ax.set_xlabel("time")
-            ax.set_xscale("log")
+            if "x" in logscale:
+                ax.set_xscale("log")
+            if "y" in logscale:
+                ax.set_yscale("log")
             plt.savefig(fname, bbox_inches="tight")
 
         plotfiles.append(fname)
@@ -1498,7 +1504,7 @@ def main(argv):
             dat = compile_run_c(ers, path, opts.name)
 
     if dat and opts.plot:
-        plotfiles = plot(ers, dat, opts.plot, opts.name)
+        plotfiles = plot(ers, dat, opts.plot, opts.name, opts.logscale)
 
     if opts.latex:
         path = latex_output(ers, opts.name, fname, opts.octave, plotfiles)
