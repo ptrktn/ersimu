@@ -2904,14 +2904,15 @@ void fex(double t, double *x, double *xdot, void *data);
 #include ERHELPER_CUSTOM_INCLUDE
 #endif
 
+/* Use formatting similar with Octave ASCII output */
 static void t_print(FILE *fp, double t, double *x, int n)
 {
 	int i;
-	
-	fprintf(fp, "%e", t);
+
+	fprintf(fp, "%.17g", t);
 
 	for (i = 1; i <= n; i++) {
-		fprintf(fp, " %e", x[i]);
+		fprintf(fp, " %.17g", x[i]);
 	}
 
 	fprintf(fp, "\n");
@@ -2944,11 +2945,19 @@ int main(int argc, char **argv)
 	iwork1 = iwork2 = iwork5 = iwork6 = iwork7 = iwork8 = iwork9 = 0;
 	rwork1 = rwork5 = rwork6 = rwork7 = 0.0;
 
+	/*
+	  H0      RWORK(5)   Step size to be attempted on the first step.
+                             The default value is determined by the solver.
+
+	  HMAX    RWORK(6)   Maximum absolute step size allowed.  The
+	                     default value is infinite.
+	*/
+
 	ersimu_init(y, atol, rtol, &t_end, &dt, &rwork5, &rwork6);
 
 	t = 0.0E0;
-	//dt = T_DELTA;
 	tout = dt;
+	tout = 0;
 	itol = 2;
 	rtol[0] = 0.0;
 	atol[0] = 0.0;
@@ -2960,25 +2969,11 @@ int main(int argc, char **argv)
 	/* iopt = 0; */
 	jt = 2;
 
-	/*
-     H0      RWORK(5)   Step size to be attempted on the first step.
-                        The default value is determined by the solver.
-	*/
-#ifdef _LSODE_H0
-	rwork5 = LSODE_H0;
-#endif
-
-	/*
-	  HMAX    RWORK(6)   Maximum absolute step size allowed.  The
-	                     default value is infinite.
-	*/
-#ifdef _LSODE_HMAX
-	rwork6 = LSODE_HMAX;
-#endif
-
+	/* Print initial conditions */
 	t_print(fp, t, y, neq);
 
 	for (iout = 1; ; iout++) {
+	  tout += dt;
 		lsoda(fex, neq, y, &t, tout, itol, rtol, atol, itask, &istate, iopt, jt,
 		      iwork1, iwork2, iwork5, iwork6, iwork7, iwork8, iwork9,
 		      rwork1, rwork5, rwork6, rwork7, 0);
@@ -2987,8 +2982,6 @@ int main(int argc, char **argv)
 		  fprintf(stderr, "error istate = %d\n", istate);
 		  exit(2);
 		}
-
-		tout += dt;
 
 		if (tout >= t_end)
 			break;

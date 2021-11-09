@@ -10,6 +10,7 @@ __version__ = "0.0.2"
 import sys
 import string
 import argparse
+import math
 
 # FIXME SymPy will be needed for deriving Jacobian (implementation pending)
 # LaTeX output requires sympy
@@ -942,8 +943,12 @@ def lsoda_c_output(ers, fbase):
 
         fp.write("\n#define NEQ %d\n" % neq)
         fp.write("#define N_REACTIONS %d\n" % n)
-        fp.write("#define T_END %s\n" % ers.simulation["T_END"])
-        fp.write("#define T_DELTA (1/ (double) %s)\n" % ers.simulation["T_POINTS"])
+        t_end = float(ers.simulation["T_END"])
+        fp.write(f"#define T_END ({t_end})\n")
+        t_points = int(t_end * math.floor(int(ers.simulation["T_POINTS"])))
+        assert(t_points > 1)
+        t_delta = t_end / (t_points - 1)
+        fp.write(f"#define T_DELTA ({t_delta})\n")
         fp.write("#define LSODE_ATOL %s\n" % ers.lsode_atol)
         fp.write("#define LSODE_RTOL %s\n" % ers.lsode_rtol)
         fp.write("#define LSODE_HMAX %s\n" %
@@ -1405,6 +1410,8 @@ def plot(ers, dat, xvars, name):
                 "set title ''\n"
                 f"set xlabel 'time'\n"
                 f"set ylabel '[{var}]'\n"
+                "set logscale x\n"
+                "set format x \"10^{%L}\"\n"
                 f"plot '{dat}' u 1:{j} w l lc'{lc}' title ''\n"
             )
             tmp.close()
