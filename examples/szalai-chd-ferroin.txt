@@ -1,0 +1,91 @@
+# Szalai et al, Phys. Chem. Chem. Phys., 2002, 4, 1271-1275
+# doi:10.1039/b109388f
+#
+# ATTENTION: There are exceptions in mass action kinetics
+
+EXCESS H H2O Q
+INITIAL H 1.29
+INITIAL H2O 1
+INITIAL Q 1
+
+CONSTANT K6 2E6
+CONSTANT K16 0.14/H
+CONSTANT K17 0.051
+CONSTANT K18 6E3
+CONSTANT K19 0.02
+
+# R1
+Br + HOBr + H <==> Br2 + H2O | 8E9 80
+# R2
+Br + HBrO2 + H <==> HOBr + HOBr | 2.5E6 2E-5
+# R3
+Br + BrO3 + H + H <==> HOBr + HOBr + HBrO2 | 1.2 3.2
+#Br + BrO3 + H + H <==> HOBr + HBrO2 | 1.2 3.2
+# R4a
+HBrO2 + H  <==> H2BrO2 | 2E6 1E8
+# R4b
+HBrO2 + H2BrO2 ==> BrO3 + HOBr + H | 1.7E5
+# R5a
+HBrO2 + BrO3 + H <==> Br2O4 + H2O | 48 3.2E3
+# R5b
+Br2O4 <==> BrO2 + BrO2 | 7.5E4 1.4E9
+# R6a
+H2Q + BrO2 + BrO2 ==> HBrO2 + HBrO2 + Q @ K6*H2Q*BrO2
+# R6b
+Red + BrO2 + H  ==>  Ox + HBrO2 | 1E7
+# R7
+CHD + H  <==> CHDE + H | 2.1E-4 5.2E2
+# R8
+CHDE + Br2 ==> BrCHD + Br + H | 2.8E9
+# R9
+BrCHD + H  ==>  CHED + Br + H + H | 5E-5
+# R10
+CHED + H ==> H2Q + H | 1.9*1E-4
+# R11
+CHD + BrO3 + H ==> H2Q + HBrO2 + H2O | 2E-5
+# R12
+CHD + HBrO2 ==> H2Q + HOBr + H2O | 5
+# R13
+H2Q + BrO3 + H ==> Q + HBrO2 + H2O | 2E-2
+# R14
+H2Q + HOBr ==> Q + Br + H + H2O | 6E5
+# R15
+H2Q + Br2 ==> Q + Br + Br + H + H | 1E4
+# R16
+Ox + Ox + CHD ==> Red + Red + H2Q + H + H @ K16*Ox*CHD
+# R17
+Ox + Ox + BrCHD ==> Q + Br + H + H + H + Red + Red @ K17*Ox*BrCHD
+# R18
+Ox + Ox + H2Q ==> Red + Red + Q + H + H @ K18*Ox*H2Q
+# R19
+Red + Red + BrO3  + H + H + H ==> Ox + Ox + HBrO2 + H2O @ K19*Red*BrO3*H*H
+
+INITIAL Br 5E-3
+INITIAL BrO3 0.1
+INITIAL Red 3E-6
+INITIAL CHD 0.1
+
+SIMULATION T_END 12600
+SIMULATION T_POINTS 10
+SIMULATION MAXIMUM_STEP_SIZE 0.001
+
+LATEX Br Br^{-}
+LATEX H H^{+}
+LATEX Br2 Br_{2}
+LATEX H2O H_{2}O
+LATEX HBrO2 HBrO_{2}
+LATEX H2BrO2 H_{2}BrO_{2}
+LATEX BrO3 BrO_{3}
+LATEX Br2O4 Br_{2}O_{4}
+LATEX BrO2 BrO_{2}^{\bullet}
+LATEX HQ HQ^{.}
+LATEX H2Q H_{2}Q
+LATEX K6 k_{8}
+LATEX K16 k_{19}
+LATEX K17 k_{20}
+LATEX K18 k_{21}
+LATEX K19 k_{22}
+
+# Mechanistic studies on the bromate-1,4-cyclohexanedione-ferroin
+# oscillatory system
+BIBITEM szalai2002 I. Szalai, K. Kurin--Cs\"orgei, M. Orb\'an, {\em Phys. Chem. Chem. Phys.}, {\bf 2002}, {\em 4(8)}, pp. 1271-1275.
