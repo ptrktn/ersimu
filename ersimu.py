@@ -1427,9 +1427,9 @@ def plot(ers, dat, xvars, name, logscale):
             ax.plot(data[0], data[i], color=lc)
             ax.set_ylabel(var)
             ax.set_xlabel("time")
-            if "x" in logscale:
+            if logscale and "x" in logscale:
                 ax.set_xscale("log")
-            if "y" in logscale:
+            if logscale and "y" in logscale:
                 ax.set_yscale("log")
             plt.savefig(fname, bbox_inches="tight")
 
