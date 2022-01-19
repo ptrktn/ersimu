@@ -1378,6 +1378,7 @@ def plot(ers, dat, xvars, name, logscale):
     dbg(f"plot {dat} {xvars} {name} {logscale}")
 
     gnuplot = False
+
     try:
         # these are imported only if required
         import matplotlib.pyplot as plt
@@ -1389,7 +1390,19 @@ def plot(ers, dat, xvars, name, logscale):
 
     if gnuplot:
         assert(0 == os.system('test -x "$(command -v gnuplot)"'))
-        setlg = f"set logscale {logscale}" if logscale else "unset logscale"
+        if logscale:
+            setlg = f"set logscale {logscale}"
+            if "x" in logscale:
+                setfmtx = "set format x \"10^{%L}\""
+            else:
+                setfmtx = ""
+            if "y" in logscale:
+                setfmty = "set format y \"10^{%L}\""
+            else:
+                setfmty = ""
+        else:
+            setlg = "unset logscale"
+            setfmtx = setfmty = "\n"
     else:
         with open(dat) as fp:
             data = np.loadtxt(fp, unpack=True)
@@ -1414,7 +1427,8 @@ def plot(ers, dat, xvars, name, logscale):
                 f"set xlabel 'time'\n"
                 f"set ylabel '[{var}]'\n"
                 f"{setlg}\n"
-                "set format x \"10^{%L}\"\n"
+                f"{setfmtx}\n"
+                f"{setfmty}\n"
                 f"plot '{dat}' u 1:{j} w l lc'{lc}' title ''\n"
             )
             tmp.close()
