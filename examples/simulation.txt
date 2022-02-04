@@ -1,0 +1,24 @@
+# name can not contain dashes and words `ersimu' and `lsoda' are reserved
+SIMULATION NAME example_simulation
+# plot variables or `all'
+SIMULATION PLOT X Y
+# 1 means go
+SIMULATION RUN 1
+
+        A ==> X
+X + X + Y ==> X + X + X
+    B + X ==> Y + D
+        X ==> E
+
+EXCESS A B D E
+
+INITIAL X 1
+INITIAL Y 1
+INITIAL A 1
+INITIAL B 3
+INITIAL D 0
+INITIAL E 0
+
+SIMULATION T_END 55
+SIMULATION T_POINTS 10
+SIMULATION MAXIMUM_STEP_SIZE 0.01

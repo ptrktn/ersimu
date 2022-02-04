@@ -54,7 +54,7 @@ def get_arg_parser():
 
     parser.add_argument("--latex", action="store_true", dest="latex", default=False, help="generate LaTeX output")
     parser.add_argument("--lsodac", action="store_true", dest="lsodac", default=True, help="generate LSODA C output (default)")
-    parser.add_argument("--name", type=str, dest="name", default="simulation", help="output name")
+    parser.add_argument("--name", type=str, dest="name", default=None, help="output name")
     parser.add_argument("--logscale", type=str, dest="logscale", default=None, help="Plot using log scale for axes (x, y, xy)")
     parser.add_argument("--octave", action="store_true", dest="octave", default=False, help="generate GNU Octave output")
     parser.add_argument("--plot", action="append", dest="plot", help="plot a variable (can be `all' or repeated)")
@@ -67,7 +67,7 @@ def get_arg_parser():
     return parser.parse_args()
 
 
-class R:
+class Reaction:
     def __init__(self):
         self.text = None
         self.i = 0
@@ -189,13 +189,15 @@ class ERSimu:
         self.lsode_rtol = "1.49012E-8"
         self.n_reactions = None
         self.n_equations = None
-
+        self.name = "simulation"
+        self.plot = None
+        self.run = False
 
     def load(self, fname):
         fp = open(fname)
         n = 0
         nr = 1
-        r = R()
+        r = Reaction()
         for line in fp:
             n += 1
             line = line.strip()
@@ -235,6 +237,12 @@ class ERSimu:
                             self.lsode_atol = vals[2]
                         elif "RTOL" == vals[1]:
                             self.lsode_rtol = vals[2]
+                        elif "NAME" == vals[1]:
+                            self.name = vals[2]
+                        elif "PLOT" == vals[1]:
+                            self.plot = vals[2:]
+                        elif "RUN" == vals[1]:
+                            self.run = True if "1" == vals[2] else False
                         else:
                             raise Exception("Invalid SIMULATION argument: %s"
                                             % vals[1])
@@ -267,7 +275,7 @@ class ERSimu:
 
                 r.reaction(line, nr, self)
                 self.reactions.append(r)
-                r = R()
+                r = Reaction()
                 nr += 1
 
         fp.close()
@@ -1459,20 +1467,28 @@ def main(argv):
         if not(config["has_sympy"]):
             err("sympy is not available")
 
-    if "ersimu" == opts.name or "lsoda" == opts.name:
-        err("bad name")
-    elif "-" in opts.name:
-        err("name can not contain dashes")
-
     config["verbose"] = opts.verbose
     config["octave"] = opts.octave
     config["latex"] = opts.latex
-    config["name"] = opts.name
     fname = opts.inputfile
 
     ers = ERSimu()
     ers.load(fname)
     proc_r(ers) # FIXME move to ERSimu
+
+    if opts.name is not None:
+        ers.name = opts.name
+
+    if opts.plot is not None:
+        ers.plot = opts.plot
+
+    if opts.run:
+        ers.run = opts.run
+        
+    if "ersimu" == ers.name or "lsoda" == ers.name:
+        err(f"bad name: {ers.name}")
+    elif "-" in ers.name:
+        err("name can not contain dashes")
     
     for r in ers.reactions:
         dbg(f"reaction = {r.i}")
@@ -1487,6 +1503,9 @@ def main(argv):
     dbg("EXCESS %s" % ers.excess)
     dbg("INITIAL %s" % ers.initial)
     dbg("CONSTANTs %s" % ers.constants)
+    dbg(f"NAME {ers.name}")
+    dbg(f"PLOT {ers.plot}")
+    dbg(f"RUN {ers.run}")
 
     for k in ers.kinet:
         dbg("KINET %s = %s" % (k, ers.kinet[k]))
@@ -1505,23 +1524,23 @@ def main(argv):
     plotfiles = None
 
     if opts.scipy:
-        scipy_output(ers, opts.name)
-        if opts.run:
-            exec(f"import {opts.name}")
+        scipy_output(ers, ers.name)
+        if ers.run:
+            exec(f"import {ers.name}")
     elif opts.octave:
-        path = octave_output(ers, opts.name)
-        if opts.run:
-            dat = run_octave(ers, path, opts.name)
+        path = octave_output(ers, ers.name)
+        if ers.run:
+            dat = run_octave(ers, path, ers.name)
     else:
-        path = lsoda_c_output(ers, opts.name)
-        if opts.run:
-            dat = compile_run_c(ers, path, opts.name)
+        path = lsoda_c_output(ers, ers.name)
+        if ers.run:
+            dat = compile_run_c(ers, path, ers.name)
 
     if dat and opts.plot:
-        plotfiles = plot(ers, dat, opts.plot, opts.name, opts.logscale)
+        plotfiles = plot(ers, dat, opts.plot, ers.name, opts.logscale)
 
     if opts.latex:
-        path = latex_output(ers, opts.name, fname, opts.octave, plotfiles)
+        path = latex_output(ers, ers.name, fname, opts.octave, plotfiles)
         cmd = f"timeout 1m pdflatex '{path}' > /dev/null 2>&1"
         dbg(cmd)
         for _ in range(2):
