@@ -1536,8 +1536,8 @@ def main(argv):
         if ers.run:
             dat = compile_run_c(ers, path, ers.name)
 
-    if dat and opts.plot:
-        plotfiles = plot(ers, dat, opts.plot, ers.name, opts.logscale)
+    if dat and ers.plot:
+        plotfiles = plot(ers, dat, ers.plot, ers.name, opts.logscale)
 
     if opts.latex:
         path = latex_output(ers, ers.name, fname, opts.octave, plotfiles)
