@@ -17,6 +17,7 @@ import math
 # For some reason (?) 'sympy' needs to be imported before 're'
 
 config = {}
+config["verbose"] = False
 config["has_sympy"] = True
 
 try:
@@ -28,13 +29,6 @@ import re
 import os
 import errno
 import time
-
-config["verbose"] = False
-config["octave"] = False
-config["latex"] = False
-config["scipy"] = False
-config["run"] = False
-config["name"] = "simulation"
 
 
 def dbg(msg):
@@ -1468,8 +1462,6 @@ def main(argv):
             err("sympy is not available")
 
     config["verbose"] = opts.verbose
-    config["octave"] = opts.octave
-    config["latex"] = opts.latex
     fname = opts.inputfile
 
     ers = ERSimu()
@@ -1512,7 +1504,7 @@ def main(argv):
 
     i = 0
     for dx in ers.xdot_raw:
-        if config["latex"] or config["octave"]:
+        if opts.latex or opts.octave:
             dbg("xdot(%d) = %s ; " % (i + 1, ers.xdot[i]))
         dbg("xdot_raw(%d) = %s ; " % (i + 1, ers.xdot_raw[i]))
         i += 1
