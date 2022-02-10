@@ -61,8 +61,8 @@ Bibliography items can be specified as follows.
 
     BIBITEM TestSet \url{https://www.dm.uniba.it/~testset}
 
-Refer to the files in [examples](examples) directory for getting
-started.
+Refer to the files in [examples](examples) directory for complete
+simulations.
 
 ## Contributing
 
