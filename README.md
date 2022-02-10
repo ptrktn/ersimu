@@ -55,7 +55,7 @@ In above example, the time range is equivalent to Octave syntax
 
 The `LATEX` keyword specifies formatting mapping.
 
-   LATEX H2O H_{2}O
+    LATEX H2O H_{2}O
 
 Bibliography items can be specified as follows.
 
