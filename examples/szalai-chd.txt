@@ -62,8 +62,10 @@ Red + Red + BrO3  + H + H + H ==> Ox + Ox + HBrO2 + H2O @ K19*Red*BrO3*H*H
 INITIAL Br 1E-5
 INITIAL BrO3 0.1
 INITIAL CHD 0.1
+
+# Uncomment the next line to simulate catalyzed reaction
 # INITIAL Red 3E-4
 
 SIMULATION T_END 30000
-SIMULATION T_POINTS 20
+SIMULATION T_POINTS 10
 SIMULATION MAXIMUM_STEP_SIZE 0.001
