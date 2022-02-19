@@ -186,6 +186,7 @@ class ERSimu:
         self.name = "simulation"
         self.plot = None
         self.run = False
+        self.runlatex = False
 
     def load(self, fname):
         fp = open(fname)
@@ -237,6 +238,8 @@ class ERSimu:
                             self.plot = vals[2:]
                         elif "RUN" == vals[1]:
                             self.run = True if "1" == vals[2] else False
+                        elif "LATEX" == vals[1]:
+                            self.runlatex = True if "1" == vals[2] else False
                         else:
                             raise Exception("Invalid SIMULATION argument: %s"
                                             % vals[1])
@@ -857,7 +860,7 @@ def latex_output(ers, fbase, src, octave=False, plotfiles=None):
     except:
         pass
 
-    fname = os.path.realpath(fname)
+    # fname = os.path.realpath(fname)
     dbg(f"output file is {fname}")
 
     return fname
@@ -1476,7 +1479,10 @@ def main(argv):
 
     if opts.run:
         ers.run = opts.run
-        
+
+    if opts.latex:
+        ers.runlatex = opts.latex
+
     if "ersimu" == ers.name or "lsoda" == ers.name:
         err(f"bad name: {ers.name}")
     elif "-" in ers.name:
@@ -1531,14 +1537,17 @@ def main(argv):
     if dat and ers.plot:
         plotfiles = plot(ers, dat, ers.plot, ers.name, opts.logscale)
 
-    if opts.latex:
+    if ers.runlatex:
         path = latex_output(ers, ers.name, fname, opts.octave, plotfiles)
-        cmd = f"timeout 1m pdflatex '{path}' > /dev/null 2>&1"
+        cmd = f"timeout 1m pdflatex '{path}'"
         dbg(cmd)
         for _ in range(2):
             if 0 != os.system(cmd):
                 dbg("pdflatex failed")
                 break
+        for f in [f"{ers.name}.log", f"{ers.name}.aux", f"{ers.name}.out", "missfont.log"]:
+            if os.path.isfile(f):
+                os.unlink(f)
 
 
 if "__main__" == __name__:
