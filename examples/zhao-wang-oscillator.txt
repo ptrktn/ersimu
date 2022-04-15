@@ -1,0 +1,59 @@
+# doi:10.1016/j.cplett.2006.08.070
+
+# 1
+Br + HOBr + H <==> Br2 + H2O | 8E9 80
+# 2
+Br + HBrO2 + H ==> HOBr + HOBr | 2.5E6
+# 3
+Br + BrO3 + H + H <==> HOBr + HBrO2 | 1.2 3.2
+# 4
+HBrO2 + HBrO2 ==> HOBr + BrO3 + H | 3400
+# 5
+HBrO2 + BrO3 + H <==> BrO2 + BrO2 + H2O | 48 6.4E7
+# 6
+H2Q + BrO2 ==> HQ + HBrO2 | 8E5
+# 7
+HQ + BrO2 ==> Q + HBrO2 | 8E9
+# 8
+HQ + HQ ==> H2Q + Q | 8.8E8
+# 9
+H2Q + Br2 ==> QBr + Br + H | 6E4
+# 10
+H2Q + BrO3 + H ==> Q + HBrO2 + H2O | 2E-2
+# 11
+H2Q + HOBr ==> Q + Br + H | 7E-6
+# 12
+QBr ==> Q + Br | 7E-6
+# 13
+# Actually in the paper the reaction is given as:
+# Q + 2 H + hv => H2Q
+# "Rate constant k13 is adjusted arbitrarily in this study to reflect
+# the variation of illumination intensity."
+# In simulation the hv is therefore excluded.
+Q + H + H ==> H2Q | 5E-4
+
+INITIAL BrO3 0.05
+INITIAL H 1.8
+INITIAL Q 0.02
+INITIAL H2O 1
+
+EXCESS H H2O
+
+SIMULATION T_END 10000
+SIMULATION T_POINTS 10
+SIMULATION MAXIMUM_STEP_SIZE 0.00001
+
+LATEX Br Br^{-}
+LATEX H H^{+}
+LATEX Br2 Br_{2}
+LATEX H2O H_{2}O
+LATEX HBrO2 HBrO_{2}
+LATEX H2BrO2 H_{2}BrO_{2}
+LATEX BrO3 BrO_{3}
+LATEX Br2O4 Br_{2}O_{4}
+LATEX BrO2 BrO_{2}^{\bullet}
+LATEX HQ HQ^{.}
+LATEX H2Q H_{2}Q
+
+
+BIBITEM zhao2006 B. Zhao, J. Wang, {\em Chem. Phys. Lett.}, {\bf 2006}, {\em 430}, 41–44.
