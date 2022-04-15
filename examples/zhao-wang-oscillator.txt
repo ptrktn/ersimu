@@ -21,7 +21,7 @@ H2Q + Br2 ==> QBr + Br + H | 6E4
 # 10
 H2Q + BrO3 + H ==> Q + HBrO2 + H2O | 2E-2
 # 11
-H2Q + HOBr ==> Q + Br + H | 7E-6
+H2Q + HOBr ==> Q + Br + H | 6E5
 # 12
 QBr ==> Q + Br | 7E-6
 # 13
@@ -49,10 +49,10 @@ LATEX Br2 Br_{2}
 LATEX H2O H_{2}O
 LATEX HBrO2 HBrO_{2}
 LATEX H2BrO2 H_{2}BrO_{2}
-LATEX BrO3 BrO_{3}
+LATEX BrO3 BrO_{3}^{-}
 LATEX Br2O4 Br_{2}O_{4}
 LATEX BrO2 BrO_{2}^{\bullet}
-LATEX HQ HQ^{.}
+LATEX HQ HQ^{\bullet}
 LATEX H2Q H_{2}Q
 
 
