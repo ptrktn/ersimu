@@ -41,7 +41,7 @@ EXCESS H H2O
 
 SIMULATION T_END 10000
 SIMULATION T_POINTS 10
-SIMULATION MAXIMUM_STEP_SIZE 0.00001
+SIMULATION MAXIMUM_STEP_SIZE 0.001
 
 LATEX Br Br^{-}
 LATEX H H^{+}
@@ -56,4 +56,4 @@ LATEX HQ HQ^{\bullet}
 LATEX H2Q H_{2}Q
 
 
-BIBITEM zhao2006 B. Zhao, J. Wang, {\em Chem. Phys. Lett.}, {\bf 2006}, {\em 430}, 41–44.
+BIBITEM zhao2006 B. Zhao, J. Wang, {\em Chem. Phys. Lett.}, {\bf 2006}, {\em 430}, 41-44. \url{https://doi.org/10.1016/j.cplett.2006.08.070}
